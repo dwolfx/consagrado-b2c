@@ -21,7 +21,7 @@ const Login = () => {
     };
 
     return (
-        <div className="container" style={{ justifyContent: 'center' }}>
+        <div className="container" style={{ justifyContent: 'top', marginTop: '1rem' }}>
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                 <Beer size={48} color="#6366f1" style={{ marginBottom: '1rem' }} />
                 <h1>Consagrado</h1>
@@ -58,7 +58,7 @@ const Login = () => {
 
             {/* Divider */}
             <div style={{
-                display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem',
+                display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1rem', marginBottom: '1rem',
                 color: 'var(--text-secondary)'
             }}>
                 <div style={{ flex: 1, height: 1, backgroundColor: 'var(--bg-tertiary)' }} />
@@ -67,7 +67,7 @@ const Login = () => {
             </div>
 
             {/* Social Login */}
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
                 <button
                     onClick={handleGoogleLogin}
                     className="btn btn-secondary"
@@ -85,8 +85,8 @@ const Login = () => {
                 </button>
             </div>
 
-            {/* Divider */}
-            <div style={{ marginTop: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            {/* Create account */}
+            <div style={{ marginTop: '1rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                 Ainda não tem conta? <Link to="/register" style={{ color: 'var(--primary)' }}>Cadastre-se</Link>
             </div>
         </div>
