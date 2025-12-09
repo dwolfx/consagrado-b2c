@@ -38,20 +38,25 @@ const History = () => {
             </header>
 
             <div style={{ display: 'grid', gap: '1rem' }}>
-                {historyData.map(item => (
-                    <div key={item.id} className="card" onClick={() => openReceipt(item)} style={{ cursor: 'pointer' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                            <h3 style={{ fontSize: '1.1rem', margin: 0 }}>{item.place}</h3>
-                            <span style={{ fontWeight: 'bold', color: 'var(--success)' }}>
-                                {item.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                            </span>
+                {historyData.map(item => {
+                    const itemSubtotal = item.items.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+                    const itemTotal = itemSubtotal + (itemSubtotal * 0.1) + 1.99;
+
+                    return (
+                        <div key={item.id} className="card" onClick={() => openReceipt(item)} style={{ cursor: 'pointer' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                <h3 style={{ fontSize: '1.1rem', margin: 0 }}>{item.place}</h3>
+                                <span style={{ fontWeight: 'bold', color: 'var(--success)' }}>
+                                    {itemTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                <Calendar size={16} />
+                                {item.date}
+                            </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                            <Calendar size={16} />
-                            {item.date}
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Receipt Modal */}
@@ -95,14 +100,20 @@ const History = () => {
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                                 <span>Taxa de Serviço (10%)</span>
-                                <span>R$ {(selectedOrder.total * 0.1).toFixed(2).replace('.', ',')}</span>
+                                <span>
+                                    {(selectedOrder.items.reduce((acc, i) => acc + (i.price * i.quantity), 0) * 0.1).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </span>
                             </div>
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                             <span style={{ fontSize: '1.2rem', fontWeight: '600' }}>Total Pago</span>
                             <span style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--success)' }}>
-                                {(selectedOrder.total + (selectedOrder.total * 0.1) + 1.99).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                {(() => {
+                                    const sub = selectedOrder.items.reduce((acc, i) => acc + (i.price * i.quantity), 0);
+                                    const final = sub + (sub * 0.1) + 1.99;
+                                    return final.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                })()}
                             </span>
                         </div>
 

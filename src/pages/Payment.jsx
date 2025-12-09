@@ -1,10 +1,15 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, AlertTriangle, X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const Payment = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [success, setSuccess] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [subtotal, setSubtotal] = useState(0);
 
     // Logic State
     const [serviceFeePercent, setServiceFeePercent] = useState(10); // 8, 10, 13
@@ -12,8 +17,36 @@ const Payment = () => {
     const [showRemoveModal, setShowRemoveModal] = useState(false);
     const [feeRemoved, setFeeRemoved] = useState(false);
 
-    const subtotal = 135.00;
     const appFee = 1.99;
+
+    useEffect(() => {
+        const loadPaymentData = async () => {
+            const tableId = localStorage.getItem('my_table_id');
+            if (!tableId) {
+                // If no table, maybe just showing 0 or redirect
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const tableData = await api.getTable(tableId);
+                const orders = tableData?.orders || [];
+
+                // Filter my orders
+                const myName = user?.name || 'Eu';
+                // Also include 'Eu' just in case of local offline dev
+                const myOrders = orders.filter(o => o.ordered_by === myName || (user?.name && o.ordered_by === 'Eu') || (!user && o.ordered_by === 'Cliente'));
+
+                const myTotal = myOrders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+                setSubtotal(myTotal);
+            } catch (error) {
+                console.error("Error loading payment info", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadPaymentData();
+    }, [user]); // user dependency to ensure name is ready
 
     const calculateTotal = () => {
         let fee = 0;
@@ -36,7 +69,10 @@ const Payment = () => {
     };
 
     const handlePayment = () => {
+        // Here we would integrate stripe/mercado pago
         setSuccess(true);
+        // Clear table session
+        localStorage.removeItem('my_table_id');
     };
 
     if (success) {
@@ -54,6 +90,8 @@ const Payment = () => {
         );
     }
 
+    if (loading) return <div className="container" style={{ justifyContent: 'center', textAlign: 'center' }}>Carregando pagamento...</div>;
+
     return (
         <div className="container fade-in">
             <header style={{ padding: '1rem 0', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
@@ -68,7 +106,7 @@ const Payment = () => {
                 <h3 style={{ marginBottom: '1rem' }}>Resumo</h3>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-                    <span>Subtotal</span>
+                    <span>Subtotal (Sua parte)</span>
                     <span>{subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </div>
 
