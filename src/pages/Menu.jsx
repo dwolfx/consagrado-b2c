@@ -335,7 +335,12 @@ const Menu = () => {
                         const userCart = cart[userId] || {};
                         const qty = userCart[item.id] || 0;
                         return (
-                            <div key={item.id} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0 }}>
+                            <div
+                                key={item.id}
+                                className="card"
+                                onClick={() => updateCart(item, 1)}
+                                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0, cursor: 'pointer' }}
+                            >
                                 <div style={{ flex: 1 }}>
                                     <h4 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{item.name}</h4>
                                     {item.description && (
@@ -351,7 +356,10 @@ const Menu = () => {
                                 {qty === 0 ? (
                                     <button
                                         className="btn btn-secondary"
-                                        onClick={() => updateCart(item, 1)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            updateCart(item, 1);
+                                        }}
                                         style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0 }}
                                     >
                                         +
@@ -360,7 +368,10 @@ const Menu = () => {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: '20px', padding: '4px' }}>
                                         <button
                                             className="btn btn-ghost"
-                                            onClick={() => updateCart(item, -1)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                updateCart(item, -1);
+                                            }}
                                             style={{ width: '32px', height: '32px', padding: 0, borderRadius: '50%' }}
                                         >
                                             -
@@ -368,7 +379,10 @@ const Menu = () => {
                                         <span style={{ fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>{qty}</span>
                                         <button
                                             className="btn btn-ghost"
-                                            onClick={() => updateCart(item, 1)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                updateCart(item, 1);
+                                            }}
                                             style={{ width: '32px', height: '32px', padding: 0, borderRadius: '50%' }}
                                         >
                                             +
