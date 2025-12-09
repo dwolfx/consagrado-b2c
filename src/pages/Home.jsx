@@ -128,7 +128,7 @@ const Home = () => {
                                 onClick={() => navigate('/tab')}
                                 className="card"
                                 style={{
-                                    margin: 0, padding: '1.5rem', flexDirection: 'row', justifyContent: 'space-between',
+                                    margin: 0, padding: '1rem', flexDirection: 'row', justifyContent: 'space-between',
                                     alignItems: 'center', cursor: 'pointer', width: '100%',
                                     background: 'rgba(30, 41, 59, 0.6)', // Different bg to stand out
                                     border: '1px solid var(--primary)', // Border to highlight active tab status
@@ -146,9 +146,6 @@ const Home = () => {
                                         <span style={{ fontWeight: '600', fontSize: '1.1rem', color: 'var(--text-primary)' }}>Minha Comanda</span>
                                         <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Acompanhar consumo</span>
                                     </div>
-                                </div>
-                                <div className="btn-ghost" style={{ borderRadius: '50%', padding: '0.5rem' }}>
-                                    ➜
                                 </div>
                             </button>
                         </div>
@@ -200,7 +197,7 @@ const Home = () => {
                                 onClick={() => navigate('/history')}
                                 className="card"
                                 style={{
-                                    margin: 0, padding: '1.5rem', flexDirection: 'row', justifyContent: 'space-between',
+                                    margin: 0, padding: '1rem', flexDirection: 'row', justifyContent: 'space-between',
                                     alignItems: 'center', cursor: 'pointer', border: '1px solid var(--bg-tertiary)'
                                 }}
                             >
@@ -212,9 +209,6 @@ const Home = () => {
                                         <span style={{ fontWeight: '600', fontSize: '1.1rem' }}>Últimos Pedidos</span>
                                         <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Ver histórico</span>
                                     </div>
-                                </div>
-                                <div className="btn-ghost" style={{ borderRadius: '50%', padding: '0.5rem' }}>
-                                    ➜
                                 </div>
                             </button>
                         </div>
