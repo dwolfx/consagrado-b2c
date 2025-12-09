@@ -220,7 +220,7 @@ const Menu = () => {
                             }}>
                                 {cartCount}
                             </div>
-                            <span>Ver Comanda</span>
+                            <span>Fazer pedido</span>
                         </div>
                         <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
                             {sending ? 'Enviando...' : cartTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}

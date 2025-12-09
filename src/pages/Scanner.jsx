@@ -1,8 +1,28 @@
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
+import { api } from '../services/api';
 
 const Scanner = () => {
     const navigate = useNavigate();
+
+    const handleSimulation = async () => {
+        try {
+            // Fetch real tables to get a valid ID
+            const tables = await api.getTables();
+            if (tables.length > 0) {
+                const validTableId = tables[0].id; // Use the first available table
+                localStorage.setItem('my_table_id', validTableId);
+                navigate('/');
+            } else {
+                alert('Nenhuma mesa encontrada no sistema para simular.');
+            }
+        } catch (error) {
+            console.error("Simulation error", error);
+            // Fallback for demo if offline/error
+            localStorage.setItem('my_table_id', '123');
+            navigate('/');
+        }
+    };
 
     return (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'black', zIndex: 999 }}>
@@ -18,11 +38,7 @@ const Scanner = () => {
                 alignItems: 'center', justifyContent: 'center'
             }}>
                 <div
-                    onClick={() => {
-                        // Simulate successful scan
-                        localStorage.setItem('my_table_id', '123');
-                        navigate('/');
-                    }}
+                    onClick={handleSimulation}
                     style={{
                         width: '280px', height: '280px',
                         border: '4px solid var(--primary)', borderRadius: '24px',
