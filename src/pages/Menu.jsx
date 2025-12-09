@@ -198,7 +198,8 @@ const Menu = () => {
                             onClick={() => setSelectedCategory(cat)}
                             style={{
                                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
-                                minWidth: '80px', opacity: isSelected ? 1 : 0.6
+                                minWidth: '80px', opacity: isSelected ? 1 : 0.6,
+                                background: 'none', border: 'none', cursor: 'pointer', outline: 'none'
                             }}
                         >
                             <div style={{
