@@ -28,36 +28,7 @@ const Login = () => {
                 <p style={{ color: 'var(--text-secondary)' }}>O seu parceiro de rolê</p>
             </div>
 
-            <div style={{ display: 'grid', gap: '1rem', marginBottom: '2rem' }}>
-                <button
-                    onClick={handleGoogleLogin}
-                    className="btn btn-secondary"
-                    style={{ backgroundColor: 'white', color: 'black' }}
-                >
-                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg" width="24" alt="G" />
-                    Continuar com Google
-                </button>
-
-                <button className="btn btn-secondary" style={{ backgroundColor: '#1877F2', color: 'white' }}>
-                    <Facebook size={24} />
-                    Continuar com Facebook
-                </button>
-
-                <button className="btn btn-secondary" style={{ backgroundColor: 'black', color: 'white' }}>
-                    <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" width="20" style={{ filter: 'invert(1)' }} alt="A" />
-                    Continuar com Apple
-                </button>
-            </div>
-
-            <div style={{
-                display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem',
-                color: 'var(--text-secondary)'
-            }}>
-                <div style={{ flex: 1, height: 1, backgroundColor: 'var(--bg-tertiary)' }} />
-                ou
-                <div style={{ flex: 1, height: 1, backgroundColor: 'var(--bg-tertiary)' }} />
-            </div>
-
+            {/* Form login */}
             <form onSubmit={handleLogin}>
                 <input
                     type="email"
@@ -85,6 +56,36 @@ const Login = () => {
                 </button>
             </form>
 
+            {/* Divider */}
+            <div style={{
+                display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem',
+                color: 'var(--text-secondary)'
+            }}>
+                <div style={{ flex: 1, height: 1, backgroundColor: 'var(--bg-tertiary)' }} />
+                ou
+                <div style={{ flex: 1, height: 1, backgroundColor: 'var(--bg-tertiary)' }} />
+            </div>
+
+            {/* Social Login */}
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+                <button
+                    onClick={handleGoogleLogin}
+                    className="btn btn-secondary"
+                    style={{ backgroundColor: 'white', color: 'black' }}
+                >
+                    <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/google/google-original.svg" width="24" alt="G" />
+                </button>
+
+                <button className="btn btn-secondary" style={{ backgroundColor: '#1877F2', color: 'white' }}>
+                    <Facebook size={24} />
+                </button>
+
+                <button className="btn btn-secondary" style={{ backgroundColor: 'black', color: 'white' }}>
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Apple_logo_black.svg" width="20" style={{ filter: 'invert(1)' }} alt="A" />
+                </button>
+            </div>
+
+            {/* Divider */}
             <div style={{ marginTop: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                 Ainda não tem conta? <Link to="/register" style={{ color: 'var(--primary)' }}>Cadastre-se</Link>
             </div>
