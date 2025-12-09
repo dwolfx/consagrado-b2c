@@ -197,6 +197,7 @@ textarea {
 .btn-ghost {
   background: transparent;
   color: var(--text-secondary);
+  --radius: 4px;
   padding: 0.5rem;
 }
 
