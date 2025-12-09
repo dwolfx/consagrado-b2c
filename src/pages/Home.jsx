@@ -102,7 +102,7 @@ const Home = () => {
                 {/* --- CONTEXT: WITH TABLE (DINING) --- */}
                 {hasTab ? (
                     <>
-                        <div style={{ display: 'grid', gap: '1rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
                             {/* Primary: Order */}
                             <button
                                 onClick={() => navigate('/menu')}
@@ -110,7 +110,8 @@ const Home = () => {
                                 style={{
                                     height: '160px', flexDirection: 'column', fontSize: '1.5rem', gap: '16px',
                                     background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', // Amber/Orange for appetite
-                                    border: 'none', boxShadow: '0 10px 30px -10px rgba(245, 158, 11, 0.5)'
+                                    border: 'none', boxShadow: '0 10px 30px -10px rgba(245, 158, 11, 0.5)',
+                                    margin: '1rem 0'
                                 }}
                             >
                                 <div style={{ padding: '16px', background: 'rgba(255,255,255,0.2)', borderRadius: '50%' }}>
@@ -122,47 +123,54 @@ const Home = () => {
                                 </div>
                             </button>
 
-                            {/* Secondary: Bill */}
-                            <button
-                                onClick={() => navigate('/tab')}
-                                className="card"
-                                style={{
-                                    margin: 0, padding: '1.5rem', flexDirection: 'row', justifyContent: 'space-between',
-                                    alignItems: 'center', cursor: 'pointer', border: '1px solid var(--bg-tertiary)'
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            {/* Secondary Action Grid */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                {/* Bill */}
+                                <button
+                                    onClick={() => navigate('/tab')}
+                                    className="card"
+                                    style={{
+                                        margin: 0, padding: '1.5rem', flexDirection: 'column',
+                                        alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                        border: '1px solid var(--bg-tertiary)', gap: '0.5rem',
+                                        backgroundColor: 'var(--bg-secondary)'
+                                    }}
+                                >
                                     <div style={{ padding: '10px', background: 'rgba(99, 102, 241, 0.1)', borderRadius: '12px' }}>
-                                        <Receipt size={24} color="#6366f1" />
+                                        <Receipt size={28} color="#6366f1" />
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                        <span style={{ fontWeight: '600', fontSize: '1.1rem' }}>Minha Comanda</span>
-                                        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Acompanhar gastos</span>
+                                    <span style={{ fontWeight: '600' }}>Minha Comanda</span>
+                                </button>
+
+                                {/* History */}
+                                <button
+                                    onClick={() => navigate('/history')}
+                                    className="card"
+                                    style={{
+                                        margin: 0, padding: '1.5rem', flexDirection: 'column',
+                                        alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                        border: '1px solid var(--bg-tertiary)', gap: '0.5rem',
+                                        backgroundColor: 'var(--bg-secondary)'
+                                    }}
+                                >
+                                    <div style={{ padding: '10px', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '12px' }}>
+                                        <HistoryIcon size={28} color="#eab308" />
                                     </div>
-                                </div>
-                                <div className="btn-ghost" style={{ width: '32px', height: '32px', padding: 0, borderRadius: '50%' }}>
-                                    ➜
-                                </div>
-                            </button>
+                                    <span style={{ fontWeight: '600' }}>Histórico</span>
+                                </button>
+                            </div>
                         </div>
 
-                        {/* Tertiary: History & Promos */}
+                        {/* Tertiary: Promos (Separate since it's less critical) */}
                         <div>
-                            <h3 style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>Ações Rápidas</h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <button onClick={() => navigate('/history')} className="card" style={{
-                                    flexDirection: 'column', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    margin: 0, gap: '8px', cursor: 'pointer'
-                                }}>
-                                    <HistoryIcon size={24} color="var(--text-secondary)" />
-                                    <span style={{ fontSize: '0.9rem' }}>Histórico</span>
-                                </button>
-                                <div className="card" style={{
-                                    flexDirection: 'column', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    margin: 0, gap: '8px', cursor: 'pointer', opacity: 0.7
-                                }}>
-                                    <span style={{ fontSize: '1.5rem' }}>🎁</span>
-                                    <span style={{ fontSize: '0.9rem' }}>Promoções</span>
+                            <div className="card" style={{
+                                padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem',
+                                cursor: 'default', opacity: 0.8
+                            }}>
+                                <span style={{ fontSize: '1.5rem' }}>🎁</span>
+                                <div>
+                                    <h4 style={{ margin: 0 }}>Promoções</h4>
+                                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Em breve cupons exclusivos</p>
                                 </div>
                             </div>
                         </div>

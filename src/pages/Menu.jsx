@@ -1,8 +1,29 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, ShoppingBag, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Search, ShoppingBag, CheckCircle, Beer, Wine, UtensilsCrossed, Coffee, Pizza, IceCream, Sandwich } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+
+const CATEGORY_ICONS = {
+    'Cervejas': Beer,
+    'Drinks': Wine,
+    'Petiscos': Pizza, // Using Pizza as generic food icon if needed, or Utensils
+    'Lanches': Sandwich,
+    'Sem Álcool': Coffee,
+    'Sobremesas': IceCream,
+    'Pratos': UtensilsCrossed
+};
+
+// Fixed categories list to ensure order and presence
+const FIXED_CATEGORIES = [
+    'Cervejas',
+    'Drinks',
+    'Petiscos',
+    'Lanches',
+    'Pratos',
+    'Sem Álcool',
+    'Sobremesas'
+];
 
 const Menu = () => {
     const navigate = useNavigate();
@@ -40,10 +61,11 @@ const Menu = () => {
                 const data = await api.getProducts();
                 setProducts(data);
 
-                // Derive categories
-                const cats = [...new Set(data.map(p => p.category))];
-                setCategories(cats);
-                if (cats.length > 0) setSelectedCategory(cats[0]);
+                // Use fixed categories, but filter to ensure we at least have logic
+                // For now, valid categories are just the fixed ones
+                setCategories(FIXED_CATEGORIES);
+                setSelectedCategory(FIXED_CATEGORIES[0]);
+
             } catch (error) {
                 console.error("Failed to load menu", error);
             } finally {
@@ -117,7 +139,7 @@ const Menu = () => {
                 const product = products.find(p => String(p.id) === String(productId));
 
                 if (!product) {
-                    console.error(`Product not found for ID: ${productId}`);
+                    console.error(`Product not found for ID: ${productId} `);
                     return null;
                 }
 
@@ -167,26 +189,33 @@ const Menu = () => {
                 display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem',
                 marginBottom: '1rem', scrollbarWidth: 'none'
             }}>
-                {categories.map(cat => (
-                    <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        style={{
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
-                            minWidth: '80px', opacity: selectedCategory === cat ? 1 : 0.6
-                        }}
-                    >
-                        <div style={{
-                            width: '64px', height: '64px', borderRadius: '16px', overflow: 'hidden',
-                            border: selectedCategory === cat ? '2px solid var(--primary)' : '2px solid transparent',
-                            backgroundColor: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}>
-                            {/* Placeholder Icon since we don't have cat images in simple product list usually */}
-                            <ShoppingBag size={24} color={selectedCategory === cat ? 'var(--primary)' : 'white'} />
-                        </div>
-                        <span style={{ fontSize: '0.85rem', whiteSpace: 'nowrap', textTransform: 'capitalize' }}>{cat}</span>
-                    </button>
-                ))}
+                {categories.map(cat => {
+                    const Icon = CATEGORY_ICONS[cat] || ShoppingBag;
+                    const isSelected = selectedCategory === cat;
+                    return (
+                        <button
+                            key={cat}
+                            onClick={() => setSelectedCategory(cat)}
+                            style={{
+                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+                                minWidth: '80px', opacity: isSelected ? 1 : 0.6
+                            }}
+                        >
+                            <div style={{
+                                width: '60px', height: '60px', borderRadius: '16px', overflow: 'hidden',
+                                border: isSelected ? '2px solid var(--primary)' : '2px solid transparent',
+                                backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.2)' : 'var(--bg-tertiary)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                transition: 'all 0.2s ease'
+                            }}>
+                                <Icon size={24} color={isSelected ? 'var(--primary)' : 'var(--text-secondary)'} />
+                            </div>
+                            <span style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', color: isSelected ? 'white' : 'var(--text-secondary)' }}>
+                                {cat}
+                            </span>
+                        </button>
+                    );
+                })}
             </div>
 
             {/* Items */}
