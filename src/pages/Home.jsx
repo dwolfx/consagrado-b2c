@@ -208,9 +208,6 @@ const Home = () => {
                                         <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Acompanhar consumo</span>
                                     </div>
                                 </div>
-                                <div className="btn-ghost" style={{ borderRadius: '50%', padding: '0.5rem' }}>
-                                    ➜
-                                </div>
                             </button>
                         </div>
 
