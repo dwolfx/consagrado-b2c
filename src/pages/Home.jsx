@@ -157,6 +157,33 @@ const Home = () => {
                                 </div>
                             </button>
 
+                            {/* Call Waiter (Full Width) */}
+                            <button
+                                onClick={async () => {
+                                    const confirm = window.confirm('Deseja chamar o garçom?');
+                                    if (confirm) {
+                                        const tableId = localStorage.getItem('my_table_id');
+                                        if (tableId) {
+                                            await api.callWaiter(tableId, user?.name);
+                                            alert('Garçom chamado! Aguarde um instante.');
+                                        }
+                                    }
+                                }}
+                                className="card"
+                                style={{
+                                    margin: '0 0 1rem 0', padding: '1rem', flexDirection: 'row', justifyContent: 'center',
+                                    alignItems: 'center', cursor: 'pointer', width: '100%',
+                                    background: 'var(--bg-secondary)',
+                                    border: '1px solid var(--warning)',
+                                    boxShadow: 'none'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--warning)' }}>
+                                    <Bell size={20} />
+                                    <span style={{ fontWeight: '600', fontSize: '1rem' }}>Chamar Garçom</span>
+                                </div>
+                            </button>
+
                             {/* Secondary: Bill (Distinctive full-width card) */}
                             <button
                                 onClick={() => navigate('/tab')}
@@ -181,32 +208,8 @@ const Home = () => {
                                         <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Acompanhar consumo</span>
                                     </div>
                                 </div>
-                            </button>
-
-                            {/* Call Waiter (Full Width) */}
-                            <button
-                                onClick={async () => {
-                                    const confirm = window.confirm('Deseja chamar o garçom?');
-                                    if (confirm) {
-                                        const tableId = localStorage.getItem('my_table_id');
-                                        if (tableId) {
-                                            await api.callWaiter(tableId, user?.name);
-                                            alert('Garçom chamado! Aguarde um instante.');
-                                        }
-                                    }
-                                }}
-                                className="card"
-                                style={{
-                                    margin: '0.5rem 0', padding: '1rem', flexDirection: 'row', justifyContent: 'center',
-                                    alignItems: 'center', cursor: 'pointer', width: '100%',
-                                    background: 'var(--bg-secondary)',
-                                    border: '1px solid var(--warning)',
-                                    boxShadow: 'none'
-                                }}
-                            >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--warning)' }}>
-                                    <Bell size={20} />
-                                    <span style={{ fontWeight: '600', fontSize: '1rem' }}>Chamar Garçom</span>
+                                <div className="btn-ghost" style={{ borderRadius: '50%', padding: '0.5rem' }}>
+                                    ➜
                                 </div>
                             </button>
                         </div>
