@@ -17,15 +17,39 @@ const Scanner = () => {
                 height: '100%', display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center'
             }}>
-                <div style={{
-                    width: '280px', height: '280px',
-                    border: '4px solid var(--primary)', borderRadius: '24px',
-                    boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)'
-                }} />
+                <div
+                    onClick={() => {
+                        // Simulate successful scan
+                        localStorage.setItem('my_table_id', '123');
+                        navigate('/');
+                    }}
+                    style={{
+                        width: '280px', height: '280px',
+                        border: '4px solid var(--primary)', borderRadius: '24px',
+                        boxShadow: '0 0 0 9999px rgba(0,0,0,0.5)',
+                        cursor: 'pointer',
+                        position: 'relative'
+                    }}
+                >
+                    <div style={{
+                        position: 'absolute', inset: 0,
+                        background: 'linear-gradient(180deg, transparent, rgba(99, 102, 241, 0.4), transparent)',
+                        animation: 'scan 2s linear infinite'
+                    }} />
+                </div>
                 <p style={{ marginTop: '2rem', color: 'white', fontSize: '1.25rem' }}>
                     Aponte para o QR Code da mesa
                 </p>
+                <p style={{ marginTop: '0.5rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
+                    (Toque no quadrado para simular)
+                </p>
             </div>
+            <style>{`
+                @keyframes scan {
+                    0% { transform: translateY(-100%); }
+                    100% { transform: translateY(100%); }
+                }
+            `}</style>
         </div>
     );
 };

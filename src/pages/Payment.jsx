@@ -55,12 +55,12 @@ const Payment = () => {
     }
 
     return (
-        <div className="container" style={{ position: 'relative' }}>
+        <div className="container fade-in">
             <header style={{ padding: '1rem 0', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                 <button onClick={() => navigate(-1)} className="btn-ghost" style={{ width: 'auto', padding: 0 }}>
                     <ArrowLeft />
                 </button>
-                <h2>Pagamento</h2>
+                <h2 style={{ margin: 0 }}>Pagamento</h2>
             </header>
 
             {/* Bill Breakdown */}
@@ -70,6 +70,12 @@ const Payment = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
                     <span>Subtotal</span>
                     <span>{subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                </div>
+
+                {/* App Fee */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', color: 'var(--text-secondary)' }}>
+                    <span>Taxa do App (Fixo)</span>
+                    <span>{appFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </div>
 
                 {/* Service Fee Selection */}
@@ -90,8 +96,8 @@ const Payment = () => {
                                 <button
                                     key={pct}
                                     onClick={() => setServiceFeePercent(pct)}
-                                    className={`btn ${serviceFeePercent === pct ? 'btn-primary' : 'btn-outline'}`}
-                                    style={{ padding: '0.5rem', fontSize: '0.9rem', width: 'auto', flex: 1 }}
+                                    className={`btn ${serviceFeePercent === pct ? 'btn-primary' : 'btn-secondary'}`}
+                                    style={{ padding: '0.5rem', fontSize: '0.9rem', width: 'auto', flex: 1, minHeight: 'unset' }}
                                 >
                                     {pct}%
                                 </button>
@@ -103,7 +109,7 @@ const Payment = () => {
                         <div style={{ textAlign: 'right' }}>
                             <button
                                 onClick={() => setShowRemoveModal(true)}
-                                style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textDecoration: 'underline' }}
+                                style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                             >
                                 Não pagar taxa de serviço
                             </button>
@@ -115,12 +121,7 @@ const Payment = () => {
                     )}
                 </div>
 
-                {/* App Fee */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', color: 'var(--text-secondary)' }}>
-                    <span>Taxa do App (Fixo)</span>
-                    <span>{appFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                </div>
-
+                {/* Total */}
                 <div style={{ borderTop: '1px solid var(--bg-tertiary)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Total</span>
                     <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>
@@ -132,13 +133,13 @@ const Payment = () => {
             <h3 style={{ marginBottom: '1rem' }}>Forma de Pagamento</h3>
 
             <div style={{ display: 'grid', gap: '1rem', paddingBottom: '2rem' }}>
-                <button className="btn btn-outline" onClick={handlePayment}>
+                <button className="btn btn-secondary" onClick={handlePayment}>
                     PIX
                 </button>
-                <button className="btn btn-outline" onClick={handlePayment}>
+                <button className="btn btn-secondary" onClick={handlePayment}>
                     Cartão de Crédito
                 </button>
-                <button className="btn btn-outline" onClick={handlePayment}>
+                <button className="btn btn-secondary" onClick={handlePayment}>
                     Apple Pay
                 </button>
             </div>
@@ -149,13 +150,10 @@ const Payment = () => {
                     position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem'
                 }}>
-                    <div style={{
-                        backgroundColor: 'var(--bg-secondary)', padding: '1.5rem',
-                        borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: '360px'
-                    }}>
+                    <div className="card" style={{ width: '100%', maxWidth: '360px', margin: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                             <h3>Remover Taxa</h3>
-                            <button onClick={() => setShowRemoveModal(false)}><X /></button>
+                            <button onClick={() => setShowRemoveModal(false)} className="btn-ghost" style={{ width: 'auto' }}><X /></button>
                         </div>
 
                         <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'start' }}>
@@ -175,7 +173,7 @@ const Payment = () => {
                         <button
                             onClick={handleRemoveFee}
                             className="btn btn-primary"
-                            style={{ marginTop: '1rem', backgroundColor: 'var(--danger)' }}
+                            style={{ marginTop: '1rem', background: 'var(--danger)' }}
                         >
                             Confirmar Remoção
                         </button>

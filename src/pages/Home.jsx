@@ -7,13 +7,15 @@ import { api } from '../services/api';
 const Home = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const [establishments, setEstablishments] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [hasTab, setHasTab] = useState(false);
 
     useEffect(() => {
         const load = async () => {
             try {
                 const data = await api.getEstablishments();
-                setEstablishments(data);
+                setEstablishments(data || []);
             } catch (error) {
                 console.error("Failed to load establishments", error);
             } finally {
@@ -22,9 +24,13 @@ const Home = () => {
         };
         load();
 
-        // Check for active tab
-        const tableId = localStorage.getItem('my_table_id');
-        setHasTab(!!tableId);
+        // Check for active tab safely
+        try {
+            const tableId = localStorage.getItem('my_table_id');
+            setHasTab(!!tableId);
+        } catch (e) {
+            console.error("Storage access error", e);
+        }
     }, []);
 
     const handleMainAction = () => {
@@ -35,9 +41,15 @@ const Home = () => {
         }
     };
 
+    // Safe user access helpers
+    const userName = user?.name || 'Visitante';
+    const userInitial = userName.charAt(0) || 'U';
+    const firstName = userName.split(' ')[0] || 'Visitante';
+
     if (loading) return (
         <div className="container" style={{ justifyContent: 'center', alignItems: 'center' }}>
             <div style={{ width: '40px', height: '40px', border: '3px solid var(--bg-tertiary)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+            <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
         </div>
     );
 
@@ -53,11 +65,11 @@ const Home = () => {
                         boxShadow: '0 0 10px rgba(171, 71, 188, 0.4)'
                     }}>
                         <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'white' }}>
-                            {user?.name.charAt(0)}
+                            {userInitial}
                         </span>
                     </div>
                     <div>
-                        <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Olá, {user?.name.split(' ')[0]}</h2>
+                        <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Olá, {firstName}</h2>
                         {hasTab ? (
                             <span style={{ color: 'var(--success)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--success)', display: 'inline-block' }}></span>
@@ -85,7 +97,7 @@ const Home = () => {
                         fontSize: '1.4rem',
                         gap: '12px',
                         background: hasTab
-                            ? 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)' // Tab Color
+                            ? 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)' // Tab Color (Indigo/Purple)
                             : 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)', // Scan Color (Green/Blue)
                         border: '1px solid rgba(255,255,255,0.1)'
                     }}
@@ -121,7 +133,7 @@ const Home = () => {
                 <section style={{ marginTop: '1rem' }}>
                     <h3 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Próximos a você</h3>
                     {establishments.map(est => (
-                        <div key={est.id} className="card" onClick={() => navigate('/tab')} style={{ marginBottom: '0.75rem' }}>
+                        <div key={est.id} className="card" onClick={() => navigate('/tab')} style={{ marginBottom: '0.75rem', cursor: 'pointer' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
                                     <h4 style={{ marginBottom: '0.25rem' }}>{est.name}</h4>

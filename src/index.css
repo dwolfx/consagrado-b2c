@@ -87,7 +87,7 @@ textarea {
 /* Animations */
 @keyframes fadeIn {
   from {
-    opacity: 0;
+    opacity: 1; /* DEBUG: Was 0 */
     transform: translateY(10px);
   }
 
