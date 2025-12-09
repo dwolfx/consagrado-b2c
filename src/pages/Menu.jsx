@@ -13,10 +13,30 @@ const Menu = () => {
     const [loading, setLoading] = useState(true);
     const [cart, setCart] = useState({}); // { productId: quantity }
     const [sending, setSending] = useState(false);
+    const [establishmentName, setEstablishmentName] = useState('');
 
     useEffect(() => {
         const load = async () => {
+            const tableId = localStorage.getItem('my_table_id');
+
+            if (!tableId) {
+                // If no table, stop loading and we will render the blocked state
+                setLoading(false);
+                return;
+            }
+
             try {
+                // Fetch Table Details to get Establishment Name
+                // We handle the case where api.getTable might fail or return null
+                try {
+                    const tableData = await api.getTable(tableId);
+                    if (tableData && tableData.establishment) {
+                        setEstablishmentName(tableData.establishment.name);
+                    }
+                } catch (e) {
+                    console.error("Error fetching table info", e);
+                }
+
                 const data = await api.getProducts();
                 setProducts(data);
 
@@ -32,6 +52,31 @@ const Menu = () => {
         };
         load();
     }, []);
+
+    const tableId = localStorage.getItem('my_table_id');
+
+    if (!tableId) {
+        return (
+            <div className="container" style={{ justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
+                <div style={{
+                    width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'var(--bg-tertiary)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto'
+                }}>
+                    <Search size={40} color="var(--text-secondary)" />
+                </div>
+                <h2>Ops! Sem mesa.</h2>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
+                    Para ver o cardápio e fazer pedidos, você precisa ler o QR Code da mesa primeiro.
+                </p>
+                <button onClick={() => navigate('/scanner')} className="btn btn-primary" style={{ width: '100%' }}>
+                    Ler QR Code Agora
+                </button>
+                <button onClick={() => navigate('/')} className="btn btn-ghost" style={{ width: '100%', marginTop: '0.5rem' }}>
+                    Voltar
+                </button>
+            </div>
+        );
+    }
 
     const filteredItems = products.filter(item => item.category === selectedCategory);
 
@@ -109,7 +154,7 @@ const Menu = () => {
                 <div style={{ flex: 1, position: 'relative' }}>
                     <input
                         type="text"
-                        placeholder="Buscar..."
+                        placeholder={establishmentName ? `Buscar em ${establishmentName}...` : "Buscar..."}
                         className="input-field"
                         style={{ paddingLeft: '2.5rem', marginBottom: 0, height: '40px' }}
                     />
