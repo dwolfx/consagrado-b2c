@@ -102,7 +102,7 @@ const History = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                             <span style={{ fontSize: '1.2rem', fontWeight: '600' }}>Total Pago</span>
                             <span style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--success)' }}>
-                                {(selectedOrder.total * 1.1 + 1.99).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                {(selectedOrder.total + (selectedOrder.total * 0.1) + 1.99).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </span>
                         </div>
 
