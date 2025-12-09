@@ -38,4 +38,25 @@ Interface projetada para ambientes noturnos:
     *   **Taxa Flexível**: Escolha entre 8%, 10% ou 13% (ou justifique a remoção).
     *   Liberação automática na portaria.
 4.  **Perfil & Histórico**:
-    *   Gerenciamento de dados (LGPD) e histórico de noites anteriores.
+
+---
+
+## 🚧 Limitações Atuais (Dados & MVP)
+Para fins de apresentação e testes do MVP, algumas funcionalidades utilizam dados simulados ("mockados") ou simplificados:
+
+1.  **Histórico (`History.jsx`)**:
+    *   Exibe dados fictícios (`Bar do Zé`, `Pub O'Malleys`).
+    *   Não puxa o histórico real do banco de dados ainda.
+
+2.  **Perfil (`Profile.jsx`)**:
+    *   Edição de nome é apenas local (estado temporário).
+    *   Botão "Excluir Conta" realiza apenas logout, sem apagar registros do banco.
+
+3.  **Menu (`Menu.jsx`)**:
+    *   As Categorias são fixas no código (`FIXED_CATEGORIES`). Novas categorias criadas no banco requerem atualização no frontend.
+
+4.  **Autenticação**:
+    *   Login simplificado via `users` table lookup. Não utiliza Supabase Auth completo (Magic Link/SMS) neste estágio.
+
+5.  **Pagamento**:
+    *   O fluxo de pagamento é simulado. O sucesso limpa a sessão local da mesa, mas não integra com gateways reais.
