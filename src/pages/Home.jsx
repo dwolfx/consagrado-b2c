@@ -25,56 +25,81 @@ const Home = () => {
     }, []);
 
     const handleAccessTab = () => {
-        // Simple logic for demo: always go to Tab if clicked
         navigate('/tab');
     };
 
-    if (loading) return <div className="container" style={{ paddingTop: '3rem', color: 'white' }}><h5>Carregando...</h5></div>;
+    if (loading) return (
+        <div className="container" style={{ justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ width: '40px', height: '40px', border: '3px solid var(--bg-tertiary)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        </div>
+    );
 
     return (
-        <div className="container" style={{ position: 'relative' }}>
-            <header style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                marginBottom: '2rem', paddingTop: '1rem'
-            }}>
-                <div onClick={() => navigate('/profile')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ backgroundColor: 'var(--primary)', borderRadius: '50%', padding: '0.5rem' }}>
-                        <User size={20} color="white" />
+        <div className="container fade-in">
+            <header className="glass-header">
+                <div onClick={() => navigate('/profile')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{
+                        width: '40px', height: '40px',
+                        background: 'linear-gradient(135deg, #FF6B6B 0%, #ab47bc 100%)',
+                        borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 0 10px rgba(171, 71, 188, 0.4)'
+                    }}>
+                        <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'white' }}>
+                            {user?.name.charAt(0)}
+                        </span>
                     </div>
                     <div>
-                        <h2 style={{ fontSize: '1.25rem' }}>Olá, {user?.name.split(' ')[0]}</h2>
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Vamos curtir a noite?</p>
+                        <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Olá, {user?.name.split(' ')[0]}</h2>
+                        <span style={{ color: 'var(--success)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--success)', display: 'inline-block' }}></span>
+                            Online e curtindo
+                        </span>
                     </div>
                 </div>
-                <button onClick={logout} className="btn-ghost" style={{ width: 'auto', padding: '0.5rem' }}>
-                    <LogOut size={24} />
+                <button onClick={logout} className="btn-ghost" style={{ padding: '0.5rem', borderRadius: '50%' }}>
+                    <LogOut size={20} />
                 </button>
             </header>
 
-            <main style={{ display: 'grid', gap: '1.5rem', flex: 1 }}>
+            <main style={{ display: 'grid', gap: '1rem', flex: 1 }}>
                 <button
                     onClick={handleAccessTab}
                     className="btn btn-primary"
                     style={{
-                        height: '160px',
+                        height: '140px',
                         flexDirection: 'column',
-                        fontSize: '1.5rem',
-                        background: 'linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%)'
+                        fontSize: '1.4rem',
+                        gap: '12px',
+                        background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                        border: '1px solid rgba(255,255,255,0.1)'
                     }}
                 >
-                    <Receipt size={48} style={{ marginBottom: '0.5rem' }} />
-                    Acessar Comanda
+                    <div style={{ padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}>
+                        <Receipt size={32} color="white" />
+                    </div>
+                    Minha Comanda
                 </button>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                    <button onClick={() => navigate('/menu')} className="btn btn-secondary" style={{ flexDirection: 'column', height: '120px' }}>
-                        <ShoppingBag size={32} style={{ marginBottom: '0.5rem' }} />
-                        Cardápio
+                    <button onClick={() => navigate('/menu')} className="card" style={{
+                        flexDirection: 'column', height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        margin: 0, gap: '10px', cursor: 'pointer'
+                    }}>
+                        <div style={{ padding: '10px', background: 'rgba(56, 189, 248, 0.1)', borderRadius: '12px' }}>
+                            <ShoppingBag size={28} color="#38bdf8" />
+                        </div>
+                        <span style={{ fontWeight: '600' }}>Cardápio</span>
                     </button>
 
-                    <button onClick={() => navigate('/history')} className="btn btn-secondary" style={{ flexDirection: 'column', height: '120px' }}>
-                        <HistoryIcon size={32} style={{ marginBottom: '0.5rem' }} />
-                        Histórico
+                    <button onClick={() => navigate('/history')} className="card" style={{
+                        flexDirection: 'column', height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        margin: 0, gap: '10px', cursor: 'pointer'
+                    }}>
+                        <div style={{ padding: '10px', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '12px' }}>
+                            <HistoryIcon size={28} color="#eab308" />
+                        </div>
+                        <span style={{ fontWeight: '600' }}>Histórico</span>
                     </button>
                 </div>
 
