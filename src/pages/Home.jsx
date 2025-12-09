@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTablePresence } from '../hooks/useTablePresence';
 import { Receipt, MapPin, LogOut, Camera, History as HistoryIcon, ShoppingBag, User } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -11,6 +12,9 @@ const Home = () => {
     const [loading, setLoading] = useState(true);
     const [hasTab, setHasTab] = useState(false);
     const [establishmentName, setEstablishmentName] = useState('');
+
+    // Track presence
+    const { onlineUsers } = useTablePresence();
 
     useEffect(() => {
         const load = async () => {
@@ -89,6 +93,36 @@ const Home = () => {
                             <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
                                 Pronto para sair?
                             </span>
+                        )}
+
+                        {/* Avatar Stack of Table Mates */}
+                        {hasTab && onlineUsers.length > 1 && (
+                            <div style={{ display: 'flex', marginTop: '0.5rem' }}>
+                                {onlineUsers
+                                    .filter(u => u.id !== user?.id) // Don't show myself again
+                                    .slice(0, 3) // Max 3 faces
+                                    .map((mate, idx) => (
+                                        <div key={idx} style={{
+                                            width: '24px', height: '24px', borderRadius: '50%',
+                                            border: '2px solid var(--bg-primary)',
+                                            marginLeft: idx > 0 ? '-8px' : '0',
+                                            overflow: 'hidden',
+                                            backgroundColor: 'var(--bg-tertiary)'
+                                        }} title={mate.name}>
+                                            <img src={mate.avatar_url || 'https://via.placeholder.com/24'} alt={mate.name} style={{ width: '100%', height: '100%' }} />
+                                        </div>
+                                    ))}
+                                {onlineUsers.length > 4 && (
+                                    <div style={{
+                                        width: '24px', height: '24px', borderRadius: '50%',
+                                        border: '2px solid var(--bg-primary)', marginLeft: '-8px',
+                                        backgroundColor: 'var(--bg-tertiary)', color: 'white',
+                                        fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        +{onlineUsers.length - 4}
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
                 </div>
