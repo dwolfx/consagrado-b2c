@@ -91,7 +91,7 @@ const History = () => {
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                                 <span>Taxa do App</span>
-                                <span>R$ 2,50</span>
+                                <span>R$ 1,99</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                                 <span>Taxa de Serviço (10%)</span>
@@ -102,7 +102,7 @@ const History = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                             <span style={{ fontSize: '1.2rem', fontWeight: '600' }}>Total Pago</span>
                             <span style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--success)' }}>
-                                {(selectedOrder.total * 1.1 + 2.50).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                {(selectedOrder.total * 1.1 + 1.99).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </span>
                         </div>
 
