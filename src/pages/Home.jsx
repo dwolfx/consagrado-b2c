@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTablePresence } from '../hooks/useTablePresence';
-import { Receipt, MapPin, LogOut, Camera, History as HistoryIcon, ShoppingBag, User } from 'lucide-react';
+import { Receipt, MapPin, LogOut, Camera, History as HistoryIcon, ShoppingBag, User, Bell } from 'lucide-react';
 import { api } from '../services/api';
 
 const Home = () => {

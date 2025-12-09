@@ -60,6 +60,26 @@ export const api = {
         return data;
     },
 
+    // Service
+    callWaiter: async (tableId, userName) => {
+        // Workaround: Create a special 0-price order to notify staff
+        const { data, error } = await supabase
+            .from('orders')
+            .insert([{
+                table_id: tableId,
+                product_id: null, // No specific product
+                name: '🔔 CHAMAR GARÇOM',
+                price: 0,
+                quantity: 1,
+                status: 'pending',
+                ordered_by: userName || 'Cliente'
+            }])
+            .select();
+
+        if (error) console.error('Error calling waiter', error);
+        return data;
+    },
+
     // Establishments
     getEstablishments: async () => {
         let { data, error } = await supabase
