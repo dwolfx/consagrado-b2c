@@ -1,19 +1,57 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, AlertCircle, CreditCard, Bell } from 'lucide-react';
-import { currentTab } from '../data/mockData';
+import { useState, useEffect } from 'react';
+import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const TabDetail = () => {
     const navigate = useNavigate();
-    const { items, establishmentName, table } = currentTab;
+    const { user } = useAuth();
+    const [loading, setLoading] = useState(true);
+    const [orders, setOrders] = useState([]);
+    const [establishment, setEstablishment] = useState(null);
+    const [tableNumber, setTableNumber] = useState(null);
 
-    // Calculate my part
-    const myTotal = items.reduce((acc, item) => {
-        // If Item has sharedWith, total price is divided by (sharedWith.length + 1)
-        return acc + (item.price * item.quantity);
-    }, 0);
+    useEffect(() => {
+        const loadTab = async () => {
+            const tableId = localStorage.getItem('my_table_id');
+            if (!tableId) {
+                navigate('/scanner');
+                return;
+            }
 
-    // Helper to get formatted price
+            try {
+                const tableData = await api.getTable(tableId);
+                if (tableData) {
+                    setOrders(tableData.orders || []);
+                    setTableNumber(tableData.number);
+                    if (tableData.establishment) {
+                        setEstablishment(tableData.establishment);
+                    }
+                }
+            } catch (error) {
+                console.error("Error loading tab", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadTab();
+    }, [navigate]);
+
+    // Filter my orders
+    // Logic: If user is logged in, match by name. If 'guest', match by 'Eu' maybe? 
+    // For now, simpler: verify if orderedBy contains name or is 'Eu' (if guest ordered as Eu)
+    // Actually, Menu sends: user?.name || 'Eu' (if explicit guest) or 'Cliente'.
+    const myName = user?.name || 'Eu';
+
+    const myOrders = orders.filter(o => o.ordered_by === myName);
+    const myTotal = myOrders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+    const totalTab = orders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
     const formatPrice = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    if (loading) return <div className="container" style={{ justifyContent: 'center', textAlign: 'center' }}>Carregando conta...</div>;
 
     return (
         <div className="container" style={{ paddingBottom: '100px' }}>
@@ -22,65 +60,56 @@ const TabDetail = () => {
                     <ArrowLeft />
                 </button>
                 <div>
-                    <h2 style={{ fontSize: '1.25rem' }}>{establishmentName}</h2>
-                    <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Mesa {table}</span>
+                    <h2 style={{ fontSize: '1.25rem' }}>{establishment?.name || 'Restaurante'}</h2>
+                    <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Mesa {tableNumber || '?'}</span>
                 </div>
                 <button className="btn-ghost" style={{ marginLeft: 'auto', color: 'var(--warning)' }}>
                     <Bell />
                 </button>
             </header>
 
+            {/* My Summary */}
             <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--primary)', color: 'white' }}>
                 <div>
-                    <span style={{ fontSize: '0.9rem', opacity: 0.9 }}>Total da sua parte</span>
+                    <span style={{ fontSize: '0.9rem', opacity: 0.9 }}>Sua parte</span>
                     <h1 style={{ fontSize: '2rem' }}>{formatPrice(myTotal)}</h1>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>Total Mesa</span>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{formatPrice(totalTab)}</div>
                 </div>
             </div>
 
-            <h3 style={{ marginBottom: '1rem', marginTop: '1rem' }}>Consumo</h3>
+            <h3 style={{ marginBottom: '1rem', marginTop: '1rem' }}>Consumo da Mesa</h3>
 
             <div style={{ display: 'grid', gap: '1rem' }}>
-                {items.map(item => {
-                    // Basic logic for split display
-                    const peopleCount = item.sharedWith.length + 1;
-                    const isShared = item.sharedWith.length > 0;
-
-                    return (
-                        <div key={item.id} className="card" style={{ marginBottom: 0 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                <span style={{ fontWeight: '600', fontSize: '1.1rem' }}>{item.quantity}x {item.name}</span>
-                                <span style={{ fontWeight: '700' }}>{formatPrice(item.price * item.quantity)}</span>
-                            </div>
-
-                            {isShared && (
-                                <div style={{ padding: '0.5rem', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                    <Users size={16} />
-                                    <span style={{ fontSize: '0.85rem' }}>
-                                        Dividido com {item.sharedWith.map(p => p.name).join(', ')} e Você
+                {orders.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+                        Nenhum pedido ainda.
+                    </div>
+                ) : (
+                    orders.map(item => {
+                        const isMine = item.ordered_by === myName;
+                        return (
+                            <div key={item.id} className="card" style={{ marginBottom: 0, borderLeft: isMine ? '4px solid var(--primary)' : 'none' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                                    <span style={{ fontWeight: '600', fontSize: '1rem' }}>{item.quantity}x {item.name}</span>
+                                    <span style={{ fontWeight: '700' }}>{formatPrice(item.price * item.quantity)}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <span style={{
+                                        fontSize: '0.8rem',
+                                        color: isMine ? 'var(--primary)' : 'var(--text-secondary)',
+                                        fontWeight: isMine ? 'bold' : 'normal'
+                                    }}>
+                                        {isMine ? 'Você' : item.ordered_by}
                                     </span>
+                                    {item.status !== 'pending' && <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--bg-tertiary)' }}>{item.status}</span>}
                                 </div>
-                            )}
-
-                            {isShared && (
-                                <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.25rem' }}>
-                                    <img
-                                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=Eu`}
-                                        style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid white' }}
-                                        title="Você"
-                                    />
-                                    {item.sharedWith.map(person => (
-                                        <img
-                                            key={person.name}
-                                            src={person.avatar}
-                                            style={{ width: 24, height: 24, borderRadius: '50%', border: '2px solid var(--bg-secondary)' }}
-                                            title={person.name}
-                                        />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    );
-                })}
+                            </div>
+                        );
+                    })
+                )}
             </div>
 
             <footer style={{

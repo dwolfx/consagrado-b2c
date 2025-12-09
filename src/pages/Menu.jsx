@@ -189,7 +189,7 @@ const Menu = () => {
 
             alert('Pedido enviado para a cozinha! 👨‍🍳');
             setCart({});
-            navigate('/tab'); // Go to My Tab
+            navigate('/'); // Back to Home
         } catch (error) {
             console.error("Error sending order", error);
             alert('Erro ao enviar pedido :(');
