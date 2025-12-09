@@ -1,25 +1,35 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Receipt, MapPin, LogOut, Camera, History as HistoryIcon, ShoppingBag, User } from 'lucide-react';
-import { currentTab } from '../data/mockData';
-import { useState } from 'react';
+import { api } from '../services/api';
 
 const Home = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [showPopup, setShowPopup] = useState(false);
+    const [establishments, setEstablishments] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    // Mock logic: randomly decide if user has a tab open
-    // For demo: Let's assume they DO if we imported currentTab
-    const hasTab = Boolean(currentTab);
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const data = await api.getEstablishments();
+                setEstablishments(data);
+            } catch (error) {
+                console.error("Failed to load establishments", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        load();
+    }, []);
 
     const handleAccessTab = () => {
-        if (hasTab) {
-            navigate('/tab');
-        } else {
-            setShowPopup(true);
-        }
+        // Simple logic for demo: always go to Tab if clicked
+        navigate('/tab');
     };
+
+    if (loading) return <div className="container" style={{ paddingTop: '3rem', color: 'white' }}><h5>Carregando...</h5></div>;
 
     return (
         <div className="container" style={{ position: 'relative' }}>
@@ -67,6 +77,23 @@ const Home = () => {
                         Histórico
                     </button>
                 </div>
+
+                <section style={{ marginTop: '1rem' }}>
+                    <h3 style={{ marginBottom: '1rem', color: 'var(--text-primary)' }}>Próximos a você</h3>
+                    {establishments.map(est => (
+                        <div key={est.id} className="card" onClick={() => navigate('/tab')} style={{ marginBottom: '0.75rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <h4 style={{ marginBottom: '0.25rem' }}>{est.name}</h4>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                        <MapPin size={12} />
+                                        <span>Aberto agora</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </section>
             </main>
 
             {/* Floating Action Button for Scanner */}
@@ -77,29 +104,7 @@ const Home = () => {
                 <button className="fab" onClick={() => navigate('/scanner')} style={{ position: 'relative', bottom: 0, right: 0 }}>
                     <Camera size={28} />
                 </button>
-                <span style={{ fontSize: '0.75rem', fontWeight: '600', backgroundColor: 'var(--bg-secondary)', padding: '2px 8px', borderRadius: '12px', border: '1px solid var(--bg-tertiary)' }}>Ler QR</span>
             </div>
-
-            {/* Popup */}
-            {showPopup && (
-                <div style={{
-                    position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100
-                }} onClick={() => setShowPopup(false)}>
-                    <div style={{
-                        backgroundColor: 'var(--bg-secondary)', padding: '2rem',
-                        borderRadius: 'var(--radius-lg)', maxWidth: '300px', textAlign: 'center'
-                    }} onClick={e => e.stopPropagation()}>
-                        <h3 style={{ marginBottom: '1rem' }}>Ops!</h3>
-                        <p style={{ marginBottom: '1.5rem', color: 'var(--text-secondary)' }}>
-                            Você não possui nenhuma comanda aberta no momento.
-                        </p>
-                        <button onClick={() => setShowPopup(false)} className="btn btn-primary">
-                            Entendi
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
