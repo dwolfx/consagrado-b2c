@@ -68,9 +68,13 @@ const Menu = () => {
         try {
             // Process all items
             const orderPromises = Object.entries(cart).map(async ([productId, qty]) => {
-                const product = products.find(p => p.id === productId); // ID is string or number? Supabase usually number or UUID. API returns data.
-                // Note: productId in object keys is string. Ensure type match if needed.
-                // Assuming product.id matches.
+                // Fix: Ensure we compare strings as Object.keys are always strings
+                const product = products.find(p => String(p.id) === String(productId));
+
+                if (!product) {
+                    console.error(`Product not found for ID: ${productId}`);
+                    return null;
+                }
 
                 return api.addOrder(tableId, {
                     productId: product.id,
@@ -81,7 +85,7 @@ const Menu = () => {
                 });
             });
 
-            await Promise.all(orderPromises);
+            await Promise.all(orderPromises.filter(p => p !== null));
 
             alert('Pedido enviado para a cozinha! 👨‍🍳');
             setCart({});
