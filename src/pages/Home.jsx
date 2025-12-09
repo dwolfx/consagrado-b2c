@@ -7,8 +7,7 @@ import { api } from '../services/api';
 const Home = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [establishments, setEstablishments] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [hasTab, setHasTab] = useState(false);
 
     useEffect(() => {
         const load = async () => {
@@ -22,10 +21,18 @@ const Home = () => {
             }
         };
         load();
+
+        // Check for active tab
+        const tableId = localStorage.getItem('my_table_id');
+        setHasTab(!!tableId);
     }, []);
 
-    const handleAccessTab = () => {
-        navigate('/tab');
+    const handleMainAction = () => {
+        if (hasTab) {
+            navigate('/tab');
+        } else {
+            navigate('/scanner');
+        }
     };
 
     if (loading) return (
@@ -51,10 +58,16 @@ const Home = () => {
                     </div>
                     <div>
                         <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Olá, {user?.name.split(' ')[0]}</h2>
-                        <span style={{ color: 'var(--success)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--success)', display: 'inline-block' }}></span>
-                            Online e curtindo
-                        </span>
+                        {hasTab ? (
+                            <span style={{ color: 'var(--success)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--success)', display: 'inline-block' }}></span>
+                                Curtindo no Bar
+                            </span>
+                        ) : (
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                                Pronto para sair?
+                            </span>
+                        )}
                     </div>
                 </div>
                 <button onClick={logout} className="btn-ghost" style={{ padding: '0.5rem', borderRadius: '50%' }}>
@@ -64,21 +77,23 @@ const Home = () => {
 
             <main style={{ display: 'grid', gap: '1rem', flex: 1 }}>
                 <button
-                    onClick={handleAccessTab}
+                    onClick={handleMainAction}
                     className="btn btn-primary"
                     style={{
                         height: '140px',
                         flexDirection: 'column',
                         fontSize: '1.4rem',
                         gap: '12px',
-                        background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                        background: hasTab
+                            ? 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)' // Tab Color
+                            : 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)', // Scan Color (Green/Blue)
                         border: '1px solid rgba(255,255,255,0.1)'
                     }}
                 >
                     <div style={{ padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '50%' }}>
-                        <Receipt size={32} color="white" />
+                        {hasTab ? <Receipt size={32} color="white" /> : <Camera size={32} color="white" />}
                     </div>
-                    Minha Comanda
+                    {hasTab ? 'Minha Comanda' : 'Ler QR Code'}
                 </button>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
