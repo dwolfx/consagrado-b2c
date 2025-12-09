@@ -129,7 +129,7 @@ const Home = () => {
                                 className="card"
                                 style={{
                                     margin: 0, padding: '1.5rem', flexDirection: 'row', justifyContent: 'space-between',
-                                    alignItems: 'center', cursor: 'pointer',
+                                    alignItems: 'center', cursor: 'pointer', width: '100%',
                                     background: 'rgba(30, 41, 59, 0.6)', // Different bg to stand out
                                     border: '1px solid var(--primary)', // Border to highlight active tab status
                                     boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.1)'
