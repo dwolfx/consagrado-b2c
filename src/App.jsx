@@ -69,6 +69,8 @@ function App() {
             </ProtectedRoute>
           } />
 
+          {/* Catch all - Redirect to Home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>
     </Router>
