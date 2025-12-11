@@ -73,7 +73,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const register = async (name, email, password, phone) => {
+    const register = async (name, email, password, phone, cpf) => {
         try {
             // Check if exists
             const { data: existing } = await supabase.from('users').select('id').eq('email', email).single();
@@ -84,8 +84,9 @@ export const AuthProvider = ({ children }) => {
                 .insert([{
                     name,
                     email,
-                    password,
+                    password, // Plain text for demo
                     phone,
+                    cpf, // Pass CPF to DB
                     role: 'customer',
                     avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${email}&backgroundColor=b6e3f4`
                 }])
