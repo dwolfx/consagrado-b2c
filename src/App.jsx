@@ -10,6 +10,7 @@ import Payment from './pages/Payment';
 import History from './pages/History';
 import Menu from './pages/Menu';
 import Profile from './pages/Profile';
+import AvatarEditor from './pages/AvatarEditor';
 import { User } from 'lucide-react';
 
 const ProtectedRoute = ({ children }) => {
@@ -66,6 +67,12 @@ function App() {
           <Route path="/profile" element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/avatar-editor" element={
+            <ProtectedRoute>
+              <AvatarEditor />
             </ProtectedRoute>
           } />
 

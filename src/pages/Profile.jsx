@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Phone, Mail, Shield, LogOut, Trash2, Camera } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, Shield, LogOut, Trash2, Edit } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 
@@ -34,7 +34,10 @@ const Profile = () => {
             </header>
 
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                <div style={{ position: 'relative', display: 'inline-block' }}>
+                <div
+                    onClick={() => navigate('/avatar-editor')}
+                    style={{ position: 'relative', display: 'inline-block', cursor: 'pointer' }}
+                >
                     <img
                         src={user?.avatar}
                         style={{ width: '100px', height: '100px', borderRadius: '50%', border: '4px solid var(--bg-secondary)' }}
@@ -42,9 +45,10 @@ const Profile = () => {
                     <button style={{
                         position: 'absolute', bottom: 0, right: 0,
                         backgroundColor: 'var(--primary)', borderRadius: '50%', width: '32px', height: '32px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white'
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white',
+                        border: 'none'
                     }}>
-                        <Camera size={16} />
+                        <Edit size={16} />
                     </button>
                 </div>
                 {isEditing ? (
