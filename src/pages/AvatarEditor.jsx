@@ -9,7 +9,11 @@ const AvatarEditor = () => {
 
     // DiceBear Options
     const hairStyles = [
-        'shortHair', 'longHair', 'balding', 'curly', 'dreads', 'bob', 'bun', 'fro'
+        'shortHairShortFlat', 'longHairStraight', 'noHair', 'shortHairShortCurly', 'longHairDreads', 'longHairBob', 'longHairBun', 'longHairFro'
+    ];
+
+    const eyeStyles = [
+        'default', 'happy', 'wink', 'side', 'squint', 'surprised'
     ];
 
     const accessories = [
@@ -32,14 +36,22 @@ const AvatarEditor = () => {
     // Translations
     const translations = {
         top: {
-            shortHair: 'Curto',
-            longHair: 'Longo',
-            balding: 'Calvície',
-            curly: 'Encaracolado',
-            dreads: 'Dreads',
-            bob: 'Chanel',
-            bun: 'Coque',
-            fro: 'Black Power'
+            shortHairShortFlat: 'Curto',
+            longHairStraight: 'Longo',
+            noHair: 'Careca',
+            shortHairShortCurly: 'Encaracolado',
+            longHairDreads: 'Dreads',
+            longHairBob: 'Chanel',
+            longHairBun: 'Coque',
+            longHairFro: 'Black Power'
+        },
+        eyes: {
+            default: 'Normal',
+            happy: 'Feliz',
+            wink: 'Piscadela',
+            side: 'Desconfiado',
+            squint: 'Apertado',
+            surprised: 'Surpreso'
         },
         accessories: {
             none: 'Nenhum',
@@ -61,10 +73,11 @@ const AvatarEditor = () => {
 
     // State
     const [config, setConfig] = useState({
-        top: 'shortHair',
+        top: 'shortHairShortFlat',
         accessories: 'none',
         skinColor: 'edb98a',
-        mouth: 'smile'
+        mouth: 'smile',
+        eyes: 'default'
     });
 
     const [loading, setLoading] = useState(false);
@@ -88,6 +101,7 @@ const AvatarEditor = () => {
         params.append('top', config.top);
         params.append('skinColor', config.skinColor);
         params.append('mouth', config.mouth);
+        params.append('eyes', config.eyes);
 
         if (config.accessories === 'none') {
             params.append('accessoriesProbability', '0');
@@ -179,6 +193,22 @@ const AvatarEditor = () => {
                                     }}
                                 />
                             ))}
+                        </div>
+                    </div>
+
+                    {/* Olhos (Slide) */}
+                    <div>
+                        <label style={{ display: 'block', textAlign: 'center', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                            Olhos
+                        </label>
+                        <div className="card" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem' }}>
+                            <button onClick={() => cycleOption('eyes', eyeStyles, 'prev')} className="btn-ghost" style={{ width: '40px' }}>
+                                <ChevronLeft />
+                            </button>
+                            <span style={{ fontWeight: 600 }}>{translations.eyes[config.eyes]}</span>
+                            <button onClick={() => cycleOption('eyes', eyeStyles, 'next')} className="btn-ghost" style={{ width: '40px' }}>
+                                <ChevronRight />
+                            </button>
                         </div>
                     </div>
 
