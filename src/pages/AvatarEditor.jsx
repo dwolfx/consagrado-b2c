@@ -9,7 +9,7 @@ const AvatarEditor = () => {
 
     // DiceBear Options
     const hairStyles = [
-        'shortHairShortFlat', 'longHairStraight', 'noHair', 'shortHairShortCurly', 'longHairDreads', 'longHairBob', 'longHairBun', 'longHairFro'
+        'shortFlat', 'straight', 'noHair', 'shortCurly', 'dreads', 'bob', 'bun', 'fro'
     ];
 
     const eyeStyles = [
@@ -36,14 +36,14 @@ const AvatarEditor = () => {
     // Translations
     const translations = {
         top: {
-            shortHairShortFlat: 'Curto',
-            longHairStraight: 'Longo',
+            shortFlat: 'Curto',
+            straight: 'Longo',
             noHair: 'Careca',
-            shortHairShortCurly: 'Encaracolado',
-            longHairDreads: 'Dreads',
-            longHairBob: 'Chanel',
-            longHairBun: 'Coque',
-            longHairFro: 'Black Power'
+            shortCurly: 'Encaracolado',
+            dreads: 'Dreads',
+            bob: 'Chanel',
+            bun: 'Coque',
+            fro: 'Black Power'
         },
         eyes: {
             default: 'Normal',
@@ -73,7 +73,7 @@ const AvatarEditor = () => {
 
     // State
     const [config, setConfig] = useState({
-        top: 'shortHairShortFlat',
+        top: 'shortFlat',
         accessories: 'none',
         skinColor: 'edb98a',
         mouth: 'smile',
