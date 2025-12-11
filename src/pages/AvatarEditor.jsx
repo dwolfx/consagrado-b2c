@@ -48,6 +48,17 @@ const AvatarEditor = () => {
         'e8e1e1', // Platinum/Grey
     ];
 
+    const clothesColors = [
+        '262e33', // Black
+        '65c9ff', // Blue
+        '5199e4', // Royal Blue
+        '25557c', // Navy
+        'e6e6e6', // Grey
+        'ff488e', // Pink
+        'ff5c5c', // Red
+        'ffffff'  // White
+    ];
+
     // Translations
     const translations = {
         top: {
@@ -98,6 +109,7 @@ const AvatarEditor = () => {
     const [config, setConfig] = useState({
         top: 'shortFlat',
         clothing: 'hoodie',
+        clothesColor: '262e33',
         accessories: 'none',
         skinColor: 'edb98a',
         hairColor: '4a312c',
@@ -106,6 +118,29 @@ const AvatarEditor = () => {
     });
 
     const [loading, setLoading] = useState(false);
+
+    // Initial Load: Parse existing avatar URL if present
+    useEffect(() => {
+        if (user?.avatar) {
+            try {
+                const url = new URL(user.avatar);
+                const params = new URLSearchParams(url.search);
+                setConfig(prev => ({
+                    ...prev,
+                    top: params.get('top') || prev.top,
+                    clothing: params.get('clothing') || prev.clothing,
+                    clothesColor: params.get('clothesColor') || prev.clothesColor,
+                    accessories: params.get('accessories') || prev.accessories,
+                    skinColor: params.get('skinColor') || prev.skinColor,
+                    hairColor: params.get('hairColor') || prev.hairColor,
+                    mouth: params.get('mouth') || prev.mouth,
+                    eyes: params.get('eyes') || prev.eyes,
+                }));
+            } catch (e) {
+                console.error("Error parsing avatar URL", e);
+            }
+        }
+    }, [user]);
 
     // Helper to get Next/Prev in array
     const cycleOption = (key, array, direction) => {
@@ -123,9 +158,8 @@ const AvatarEditor = () => {
         const params = new URLSearchParams();
 
         params.append('seed', user?.email || 'user');
-        params.append('backgroundColor', 'b6e3f4'); // Light background
+        params.append('backgroundColor', 'b6e3f4');
 
-        // Handle Bald (noHair) logic
         if (config.top === 'noHair') {
             params.append('topProbability', '0');
         } else {
@@ -136,6 +170,7 @@ const AvatarEditor = () => {
         params.append('skinColor', config.skinColor);
         params.append('hairColor', config.hairColor);
         params.append('clothing', config.clothing);
+        params.append('clothesColor', config.clothesColor);
         params.append('mouth', config.mouth);
         params.append('eyes', config.eyes);
 
@@ -149,17 +184,13 @@ const AvatarEditor = () => {
         return `${baseUrl}?${params.toString()}`;
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         setLoading(true);
-        // Simulate saving
-        setTimeout(() => {
-            const newAvatar = getAvatarUrl();
-            updateUser({ avatar: newAvatar });
-
-            alert('Visual renovado com sucesso! 😎');
-            navigate('/profile');
-            setLoading(false);
-        }, 1000);
+        const newAvatar = getAvatarUrl();
+        await updateUser({ avatar: newAvatar });
+        // alert('Visual renovado com sucesso! 😎'); // Optional: Use toast instead 
+        navigate('/profile');
+        setLoading(false);
     };
 
     return (
@@ -179,7 +210,7 @@ const AvatarEditor = () => {
                     width: '180px', height: '180px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: 'radial-gradient(circle, rgba(99,102,241,0.2) 0%, rgba(15,23,42,0) 70%)',
-                    border: '1px solid var(--primary)',
+                    border: '1px solid var(--primary)', // Fixed typo
                     borderRadius: '50%',
                     padding: '0.5rem'
                 }}>
@@ -225,7 +256,7 @@ const AvatarEditor = () => {
                                         style={{
                                             width: '32px', height: '32px', borderRadius: '50%',
                                             backgroundColor: `#${color}`,
-                                            border: config.hairColor === color ? '3px solid var(--primary)' : '2px solid transparent', // Fixed: transparent fallback
+                                            border: config.hairColor === color ? '3px solid var(--primary)' : '2px solid transparent',
                                             cursor: 'pointer',
                                             transform: config.hairColor === color ? 'scale(1.2)' : 'scale(1)',
                                             transition: 'all 0.2s',
@@ -248,20 +279,19 @@ const AvatarEditor = () => {
                                     key={color}
                                     onClick={() => setConfig({ ...config, skinColor: color })}
                                     style={{
-                                        width: '32px', height: '32px', borderRadius: '50%',
+                                        width: '40px', height: '40px', borderRadius: '50%',
                                         backgroundColor: `#${color}`,
                                         border: config.skinColor === color ? '3px solid var(--primary)' : '2px solid transparent',
                                         cursor: 'pointer',
                                         transform: config.skinColor === color ? 'scale(1.2)' : 'scale(1)',
-                                        transition: 'all 0.2s',
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                                        transition: 'all 0.2s'
                                     }}
                                 />
                             ))}
                         </div>
                     </div>
 
-                    {/* Roupas (New Slide) */}
+                    {/* Roupas */}
                     <div>
                         <label style={{ display: 'block', textAlign: 'center', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
                             Roupas
@@ -277,7 +307,31 @@ const AvatarEditor = () => {
                         </div>
                     </div>
 
-                    {/* Olhos (Slide) */}
+                    {/* Cor da Roupa (Grid) */}
+                    <div>
+                        <label style={{ display: 'block', textAlign: 'center', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                            Cor da Roupa
+                        </label>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                            {clothesColors.map(color => (
+                                <button
+                                    key={color}
+                                    onClick={() => setConfig({ ...config, clothesColor: color })}
+                                    style={{
+                                        width: '32px', height: '32px', borderRadius: '50%',
+                                        backgroundColor: `#${color}`,
+                                        border: config.clothesColor === color ? '3px solid var(--primary)' : '2px solid transparent', // Fixed: transparent fallback
+                                        cursor: 'pointer',
+                                        transform: config.clothesColor === color ? 'scale(1.2)' : 'scale(1)',
+                                        transition: 'all 0.2s',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Olhos */}
                     <div>
                         <label style={{ display: 'block', textAlign: 'center', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
                             Olhos
@@ -293,7 +347,7 @@ const AvatarEditor = () => {
                         </div>
                     </div>
 
-                    {/* Expressão (Sentiment) */}
+                    {/* Expressão */}
                     <div>
                         <label style={{ display: 'block', textAlign: 'center', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
                             Expressão
@@ -309,7 +363,7 @@ const AvatarEditor = () => {
                         </div>
                     </div>
 
-                    {/* Acessórios (Slide) */}
+                    {/* Acessórios */}
                     <div>
                         <label style={{ display: 'block', textAlign: 'center', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
                             Acessórios
