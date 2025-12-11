@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronLeft, ChevronRight, Save, Camera } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Save } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const AvatarEditor = () => {
@@ -35,6 +35,17 @@ const AvatarEditor = () => {
         'd08b5b', // medium
         'ae5d29', // dark
         '614335'  // darker
+    ];
+
+    const hairColors = [
+        '2c1b18', // Black
+        '4a312c', // Dark Brown
+        '724133', // Brown
+        'a55728', // Auburn
+        'd6b370', // Dark Blonde
+        'ecdcbf', // Blonde
+        'c93305', // Red
+        'e8e1e1', // Platinum/Grey
     ];
 
     // Translations
@@ -89,6 +100,7 @@ const AvatarEditor = () => {
         clothing: 'hoodie',
         accessories: 'none',
         skinColor: 'edb98a',
+        hairColor: '4a312c',
         mouth: 'smile',
         eyes: 'default'
     });
@@ -122,6 +134,7 @@ const AvatarEditor = () => {
         }
 
         params.append('skinColor', config.skinColor);
+        params.append('hairColor', config.hairColor);
         params.append('clothing', config.clothing);
         params.append('mouth', config.mouth);
         params.append('eyes', config.eyes);
@@ -150,25 +163,25 @@ const AvatarEditor = () => {
     };
 
     return (
-        <div className="container fade-in">
-            <header style={{ padding: '1rem 0', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+        <div className="container fade-in" style={{ height: '100vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }}>
+
+            {/* Header (Fixed) */}
+            <header style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', flex: '0 0 auto', background: 'var(--bg-primary)', zIndex: 10 }}>
                 <button onClick={() => navigate(-1)} className="btn-ghost" style={{ width: 'auto', padding: 0 }}>
                     <ArrowLeft color="white" />
                 </button>
                 <h2 style={{ margin: 0 }}>Editar Avatar</h2>
             </header>
 
-            <main style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-
-                {/* PREVIEW AREA */}
+            {/* Avatar Preview (Fixed/Sticky Area) */}
+            <section style={{ flex: '0 0 auto', display: 'flex', justifyContent: 'center', paddingBottom: '1rem', background: 'var(--bg-primary)', zIndex: 5, borderBottom: '1px solid var(--border-color)' }}>
                 <div className="card" style={{
-                    width: '200px', height: '200px',
+                    width: '180px', height: '180px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    marginBottom: '2rem',
                     background: 'radial-gradient(circle, rgba(99,102,241,0.2) 0%, rgba(15,23,42,0) 70%)',
                     border: '1px solid var(--primary)',
                     borderRadius: '50%',
-                    padding: '1rem'
+                    padding: '0.5rem'
                 }}>
                     <img
                         src={getAvatarUrl()}
@@ -176,9 +189,11 @@ const AvatarEditor = () => {
                         style={{ width: '100%', height: '100%', borderRadius: '50%' }}
                     />
                 </div>
+            </section>
 
-                {/* CONTROLS */}
-                <div style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            {/* Scrollable Options */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '2rem 1rem 120px 1rem', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
                     {/* Cabelo (Slide) */}
                     <div>
@@ -196,23 +211,50 @@ const AvatarEditor = () => {
                         </div>
                     </div>
 
+                    {/* Cor do Cabelo (Grid) */}
+                    {config.top !== 'noHair' && (
+                        <div>
+                            <label style={{ display: 'block', textAlign: 'center', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                Cor do Cabelo
+                            </label>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                                {hairColors.map(color => (
+                                    <button
+                                        key={color}
+                                        onClick={() => setConfig({ ...config, hairColor: color })}
+                                        style={{
+                                            width: '32px', height: '32px', borderRadius: '50%',
+                                            backgroundColor: `#${color}`,
+                                            border: config.hairColor === color ? '3px solid var(--primary)' : '2px solid transparent', // Fixed: transparent fallback
+                                            cursor: 'pointer',
+                                            transform: config.hairColor === color ? 'scale(1.2)' : 'scale(1)',
+                                            transition: 'all 0.2s',
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Pele (Grid) */}
                     <div>
                         <label style={{ display: 'block', textAlign: 'center', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
                             Tom de Pele
                         </label>
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                             {skinColors.map(color => (
                                 <button
                                     key={color}
                                     onClick={() => setConfig({ ...config, skinColor: color })}
                                     style={{
-                                        width: '40px', height: '40px', borderRadius: '50%',
+                                        width: '32px', height: '32px', borderRadius: '50%',
                                         backgroundColor: `#${color}`,
                                         border: config.skinColor === color ? '3px solid var(--primary)' : '2px solid transparent',
                                         cursor: 'pointer',
-                                        transform: config.skinColor === color ? 'scale(1.1)' : 'scale(1)',
-                                        transition: 'all 0.2s'
+                                        transform: config.skinColor === color ? 'scale(1.2)' : 'scale(1)',
+                                        transition: 'all 0.2s',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
                                     }}
                                 />
                             ))}
@@ -284,22 +326,23 @@ const AvatarEditor = () => {
                     </div>
 
                 </div>
+            </div>
 
-                <div style={{ marginTop: 'auto', width: '100%', paddingTop: '2rem' }}>
-                    <button
-                        onClick={handleSave}
-                        className="btn btn-primary"
-                        disabled={loading}
-                    >
-                        {loading ? 'Salvando...' : (
-                            <>
-                                <Save size={20} /> Salvar Visual
-                            </>
-                        )}
-                    </button>
-                </div>
-
-            </main>
+            {/* Footer / Save Button (Fixed Overlay at Bottom) */}
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '1.5rem', background: 'linear-gradient(to top, var(--bg-primary) 70%, transparent)', display: 'flex', justifyContent: 'center' }}>
+                <button
+                    onClick={handleSave}
+                    className="btn btn-primary"
+                    disabled={loading}
+                    style={{ width: '100%', maxWidth: '400px', boxShadow: '0 4px 15px rgba(99,102,241,0.4)' }}
+                >
+                    {loading ? 'Salvando...' : (
+                        <>
+                            <Save size={20} /> Salvar Visual
+                        </>
+                    )}
+                </button>
+            </div>
         </div>
     );
 };
