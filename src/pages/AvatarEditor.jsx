@@ -5,11 +5,15 @@ import { useAuth } from '../context/AuthContext';
 
 const AvatarEditor = () => {
     const navigate = useNavigate();
-    const { user, updateUser } = useAuth(); // Assuming updateUser exists or we simulate it
+    const { user, updateUser } = useAuth();
 
     // DiceBear Options
     const hairStyles = [
-        'shortFlat', 'straight', 'noHair', 'shortCurly', 'dreads', 'bob', 'bun', 'fro'
+        'shortFlat', 'straight01', 'noHair', 'shortCurly', 'dreads', 'bob', 'bun', 'fro'
+    ];
+
+    const clothingStyles = [
+        'hoodie', 'shirtCrewNeck', 'shirtVNeck', 'graphicShirt', 'blazerAndShirt', 'overall'
     ];
 
     const eyeStyles = [
@@ -37,13 +41,21 @@ const AvatarEditor = () => {
     const translations = {
         top: {
             shortFlat: 'Curto',
-            straight: 'Longo',
+            straight01: 'Longo',
             noHair: 'Careca',
             shortCurly: 'Encaracolado',
             dreads: 'Dreads',
             bob: 'Chanel',
             bun: 'Coque',
             fro: 'Black Power'
+        },
+        clothing: {
+            hoodie: 'Moletom',
+            shirtCrewNeck: 'Camiseta',
+            shirtVNeck: 'Gola V',
+            graphicShirt: 'Estampada',
+            blazerAndShirt: 'Social',
+            overall: 'Macacão'
         },
         eyes: {
             default: 'Normal',
@@ -74,6 +86,7 @@ const AvatarEditor = () => {
     // State
     const [config, setConfig] = useState({
         top: 'shortFlat',
+        clothing: 'hoodie',
         accessories: 'none',
         skinColor: 'edb98a',
         mouth: 'smile',
@@ -98,8 +111,18 @@ const AvatarEditor = () => {
         const params = new URLSearchParams();
 
         params.append('seed', user?.email || 'user');
-        params.append('top', config.top);
+        params.append('backgroundColor', 'b6e3f4'); // Light background
+
+        // Handle Bald (noHair) logic
+        if (config.top === 'noHair') {
+            params.append('topProbability', '0');
+        } else {
+            params.append('top', config.top);
+            params.append('topProbability', '100');
+        }
+
         params.append('skinColor', config.skinColor);
+        params.append('clothing', config.clothing);
         params.append('mouth', config.mouth);
         params.append('eyes', config.eyes);
 
@@ -193,6 +216,22 @@ const AvatarEditor = () => {
                                     }}
                                 />
                             ))}
+                        </div>
+                    </div>
+
+                    {/* Roupas (New Slide) */}
+                    <div>
+                        <label style={{ display: 'block', textAlign: 'center', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                            Roupas
+                        </label>
+                        <div className="card" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '0.5rem' }}>
+                            <button onClick={() => cycleOption('clothing', clothingStyles, 'prev')} className="btn-ghost" style={{ width: '40px' }}>
+                                <ChevronLeft />
+                            </button>
+                            <span style={{ fontWeight: 600 }}>{translations.clothing[config.clothing]}</span>
+                            <button onClick={() => cycleOption('clothing', clothingStyles, 'next')} className="btn-ghost" style={{ width: '40px' }}>
+                                <ChevronRight />
+                            </button>
                         </div>
                     </div>
 
