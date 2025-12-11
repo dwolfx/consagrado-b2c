@@ -159,7 +159,7 @@ const Home = () => {
                         <button
                             onClick={async () => {
                                 if (window.confirm('Chamar atendimento na mesa?')) {
-                                    await api.callWaiter(tableId, user?.name);
+                                    await api.callWaiter(tableId, user?.id);
                                     alert('Chamado enviado!');
                                 }
                             }}

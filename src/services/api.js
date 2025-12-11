@@ -61,7 +61,7 @@ export const api = {
     },
 
     // Service
-    callWaiter: async (tableId, userName) => {
+    callWaiter: async (tableId, userId) => {
         // Workaround: Create a special 0-price order to notify staff
         const { data, error } = await supabase
             .from('orders')
@@ -72,7 +72,7 @@ export const api = {
                 price: 0,
                 quantity: 1,
                 status: 'pending',
-                ordered_by: userName || 'Cliente'
+                ordered_by: userId
             }])
             .select();
 

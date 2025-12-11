@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }) => {
             // ---------------------------------------------------------
             if (email === 'demo@demo' && password === 'demo') {
                 const demoUser = {
-                    id: 'demo-user-id',
+                    id: '00000000-0000-0000-0000-000000000000',
                     name: 'Demo User',
                     email: 'demo@demo',
                     role: 'customer',
