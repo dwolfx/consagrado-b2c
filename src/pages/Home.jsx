@@ -63,21 +63,35 @@ const Home = () => {
                 display: 'flex', justifyContent: 'space-between', alignItems: 'start',
                 marginBottom: '2rem', paddingTop: '1rem'
             }}>
-                <div onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Olá, {userFirstName}</h1>
-                        <ChevronRight size={16} color="var(--text-secondary)" style={{ marginTop: '4px' }} />
-                    </div>
-                    {hasTab && establishment ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                            <MapPin size={14} />
-                            <span>Mesa {tableId} · <strong>{establishment.name}</strong></span>
-                        </div>
-                    ) : (
-                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                            Bem-vindo ao Consagrado
-                        </div>
+                <div onClick={() => navigate('/profile')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {user?.avatar && (
+                        <img
+                            src={user?.avatar}
+                            alt="Avatar"
+                            style={{
+                                width: '50px', height: '50px', borderRadius: '50%',
+                                border: '2px solid var(--brand-color)',
+                                backgroundColor: 'var(--bg-secondary)',
+                                objectFit: 'cover'
+                            }}
+                        />
                     )}
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <h1 style={{ fontSize: '1.4rem', margin: 0, lineHeight: '1.2' }}>Olá, {userFirstName}</h1>
+                            <ChevronRight size={18} color="var(--text-secondary)" />
+                        </div>
+                        {hasTab && establishment ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>
+                                <MapPin size={12} />
+                                <span>Mesa {tableId} · <strong>{establishment.name}</strong></span>
+                            </div>
+                        ) : (
+                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>
+                                Bem-vindo ao Consagrado
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <button
                     onClick={logout}

@@ -29,6 +29,36 @@ const AvatarEditor = () => {
         '614335'  // darker
     ];
 
+    // Translations
+    const translations = {
+        top: {
+            shortHair: 'Curto',
+            longHair: 'Longo',
+            balding: 'Calvície',
+            curly: 'Encaracolado',
+            dreads: 'Dreads',
+            bob: 'Chanel',
+            bun: 'Coque',
+            fro: 'Black Power'
+        },
+        accessories: {
+            none: 'Nenhum',
+            prescription01: 'Grau',
+            prescription02: 'Leitura',
+            round: 'Redondo',
+            sunglasses: 'Escuros',
+            wayfarers: 'Wayfarer'
+        },
+        mouth: {
+            smile: 'Sorriso',
+            twinkle: 'Piscando',
+            tongue: 'Língua',
+            serious: 'Sério',
+            grimace: 'Tenso',
+            disbelief: 'Descrente'
+        }
+    };
+
     // State
     const [config, setConfig] = useState({
         top: 'shortHair',
@@ -51,27 +81,22 @@ const AvatarEditor = () => {
     };
 
     const getAvatarUrl = () => {
-        // Construct DiceBear URL
-        // Style: avataaars
-        // 7.x API
-        const baseUrl = 'https://api.dicebear.com/7.x/avataaars/svg';
-        const params = new URLSearchParams({
-            seed: user?.email || 'user',
-            backgroundColor: 'transparent',
-            top: config.top,
-            accessories: config.accessories === 'none' ? [] : [config.accessories], // Dicebear expects array or empty
-            skinColor: [config.skinColor],
-            mouth: [config.mouth],
-            accessoriesProbability: config.accessories === 'none' ? 0 : 100
-        });
+        const baseUrl = 'https://api.dicebear.com/9.x/avataaars/svg';
+        const params = new URLSearchParams();
 
-        // Handle accessories 'none' specifically because API might default otherwise
-        let url = `${baseUrl}?${params.toString()}`;
+        params.append('seed', user?.email || 'user');
+        params.append('top', config.top);
+        params.append('skinColor', config.skinColor);
+        params.append('mouth', config.mouth);
+
         if (config.accessories === 'none') {
-            url += '&accessoriesProbability=0';
+            params.append('accessoriesProbability', '0');
+        } else {
+            params.append('accessories', config.accessories);
+            params.append('accessoriesProbability', '100');
         }
 
-        return url;
+        return `${baseUrl}?${params.toString()}`;
     };
 
     const handleSave = () => {
@@ -79,10 +104,8 @@ const AvatarEditor = () => {
         // Simulate saving
         setTimeout(() => {
             const newAvatar = getAvatarUrl();
-            // In a real app, we would patch the user in DB
-            // context.updateUser({ ...user, avatar: newAvatar });
+            updateUser({ avatar: newAvatar });
 
-            // For now, let's update localStorage mock if possible or just alert
             alert('Visual renovado com sucesso! 😎');
             navigate('/profile');
             setLoading(false);
@@ -129,7 +152,7 @@ const AvatarEditor = () => {
                             <button onClick={() => cycleOption('top', hairStyles, 'prev')} className="btn-ghost" style={{ width: '40px' }}>
                                 <ChevronLeft />
                             </button>
-                            <span style={{ fontWeight: 600 }}>{config.top}</span>
+                            <span style={{ fontWeight: 600 }}>{translations.top[config.top]}</span>
                             <button onClick={() => cycleOption('top', hairStyles, 'next')} className="btn-ghost" style={{ width: '40px' }}>
                                 <ChevronRight />
                             </button>
@@ -168,7 +191,7 @@ const AvatarEditor = () => {
                             <button onClick={() => cycleOption('mouth', mouthOptions, 'prev')} className="btn-ghost" style={{ width: '40px' }}>
                                 <ChevronLeft />
                             </button>
-                            <span style={{ fontWeight: 600 }}>{config.mouth}</span>
+                            <span style={{ fontWeight: 600 }}>{translations.mouth[config.mouth]}</span>
                             <button onClick={() => cycleOption('mouth', mouthOptions, 'next')} className="btn-ghost" style={{ width: '40px' }}>
                                 <ChevronRight />
                             </button>
@@ -184,7 +207,7 @@ const AvatarEditor = () => {
                             <button onClick={() => cycleOption('accessories', accessories, 'prev')} className="btn-ghost" style={{ width: '40px' }}>
                                 <ChevronLeft />
                             </button>
-                            <span style={{ fontWeight: 600 }}>{config.accessories}</span>
+                            <span style={{ fontWeight: 600 }}>{translations.accessories[config.accessories]}</span>
                             <button onClick={() => cycleOption('accessories', accessories, 'next')} className="btn-ghost" style={{ width: '40px' }}>
                                 <ChevronRight />
                             </button>
