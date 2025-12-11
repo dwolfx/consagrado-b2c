@@ -63,8 +63,11 @@ const Home = () => {
                 display: 'flex', justifyContent: 'space-between', alignItems: 'start',
                 marginBottom: '2rem', paddingTop: '1rem'
             }}>
-                <div>
-                    <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Olá, {userFirstName}</h1>
+                <div onClick={() => navigate('/profile')} style={{ cursor: 'pointer' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h1 style={{ fontSize: '1.5rem', marginBottom: '0.25rem' }}>Olá, {userFirstName}</h1>
+                        <ChevronRight size={16} color="var(--text-secondary)" style={{ marginTop: '4px' }} />
+                    </div>
                     {hasTab && establishment ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                             <MapPin size={14} />
@@ -164,7 +167,10 @@ const Home = () => {
                                 alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', padding: '1rem'
                             }}>
                                 <History size={20} style={{ color: 'var(--text-secondary)' }} />
-                                <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Histórico</span>
+                                <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                                    <span style={{ fontWeight: '600', fontSize: '1.1rem' }}>Histórico de Consumo</span>
+                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>O que você já consumiu</span>
+                                </div>
                             </button>
                             <div className="card" style={{
                                 alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: 0.5, padding: '1rem'
@@ -199,6 +205,29 @@ const Home = () => {
                                 style={{ width: 'auto', paddingLeft: '2rem', paddingRight: '2rem' }}
                             >
                                 <Camera size={20} /> Ler QR Code
+                            </button>
+                        </div>
+
+                        {/* Footer Action: History */}
+                        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--bg-tertiary)' }}>
+                            <button
+                                onClick={() => navigate('/history')}
+                                className="card"
+                                style={{
+                                    width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                                    marginBottom: 0, padding: '1rem', cursor: 'pointer'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                    <div style={{ padding: '8px', background: 'var(--bg-tertiary)', borderRadius: '50%' }}>
+                                        <History size={20} color="var(--text-muted)" />
+                                    </div>
+                                    <div style={{ textAlign: 'left' }}>
+                                        <div style={{ fontWeight: 600, fontSize: '1rem' }}>Histórico de Consumo</div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>O que você já consumiu</div>
+                                    </div>
+                                </div>
+                                <ChevronRight size={20} color="var(--text-muted)" />
                             </button>
                         </div>
                     </>
