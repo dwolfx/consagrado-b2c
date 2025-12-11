@@ -94,23 +94,27 @@ const AvatarEditor = () => {
     };
 
     const getAvatarUrl = () => {
-        const baseUrl = 'https://api.dicebear.com/9.x/avataaars/svg';
-        const params = new URLSearchParams();
+        // Manual construction to ensure no encoding issues with DiceBear 7.x
+        const seed = user?.email || 'user';
 
-        params.append('seed', user?.email || 'user');
-        params.append('top', config.top);
-        params.append('skinColor', config.skinColor);
-        params.append('mouth', config.mouth);
-        params.append('eyes', config.eyes);
+        // We use [] syntax because DiceBear often treats these as arrays (one of...)
+        const parts = [
+            `seed=${encodeURIComponent(seed)}`,
+            `backgroundColor=transparent`,
+            `top[]=${config.top}`,
+            `skinColor[]=${config.skinColor}`,
+            `mouth[]=${config.mouth}`,
+            `eyes[]=${config.eyes}`
+        ];
 
-        if (config.accessories === 'none') {
-            params.append('accessoriesProbability', '0');
+        if (config.accessories !== 'none') {
+            parts.push(`accessories[]=${config.accessories}`);
+            parts.push(`accessoriesProbability=100`);
         } else {
-            params.append('accessories', config.accessories);
-            params.append('accessoriesProbability', '100');
+            parts.push(`accessoriesProbability=0`);
         }
 
-        return `${baseUrl}?${params.toString()}`;
+        return `https://api.dicebear.com/7.x/avataaars/svg?${parts.join('&')}`;
     };
 
     const handleSave = () => {
