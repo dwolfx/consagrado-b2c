@@ -87,6 +87,14 @@ export const api = {
             .select('*');
         return data || [];
     },
+    getEstablishment: async (id) => {
+        let { data, error } = await supabase
+            .from('establishments')
+            .select('*')
+            .eq('id', id)
+            .single();
+        return data;
+    },
 
     // Users (Auth)
     login: async (email, password) => {

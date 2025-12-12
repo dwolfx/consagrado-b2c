@@ -26,6 +26,7 @@ const Home = () => {
                 setHasTab(!!storedTableId);
 
                 // Fetch Establishment Context
+                // Fetch Establishment Context
                 if (storedTableId) {
                     const tableData = await api.getTable(storedTableId);
                     if (tableData && tableData.establishment) {
@@ -37,6 +38,15 @@ const Home = () => {
                     // Check for active orders (Simulated)
                     // In real app, check api.getOrders status
                     setActiveOrders(true);
+                } else {
+                    // DEMO FALLBACK: Fetch Default Establishment (ID 1)
+                    // Check if user is logged in (even demo user) and apply basic branding
+                    const estabData = await api.getEstablishment(1);
+                    if (estabData) {
+                        setEstablishment(estabData);
+                        const brandColor = estabData.theme_color || '#f59e0b';
+                        document.documentElement.style.setProperty('--brand-color', brandColor);
+                    }
                 }
             } catch (e) {
                 console.error("Init Error", e);
@@ -98,7 +108,7 @@ const Home = () => {
                     style={{
                         width: '40px', height: '40px', borderRadius: '50%', background: 'var(--bg-secondary)',
                         border: '1px solid var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        cursor: 'pointer', color: 'var(--text-secondary)'
+                        cursor: 'pointer', color: 'var(--text-primary)' /* White text for contrast */
                     }}
                 >
                     <LogOut size={18} />
