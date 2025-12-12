@@ -20,6 +20,11 @@ const Home = () => {
     useEffect(() => {
         const init = async () => {
             try {
+                // FORCE DEMO USER TO TABLE 1 IMPLICITLY
+                if (user?.email === 'demo@demo' || user?.email === 'demo@demo.com') {
+                    localStorage.setItem('my_table_id', '1');
+                }
+
                 // Check Tab
                 const storedTableId = localStorage.getItem('my_table_id');
 

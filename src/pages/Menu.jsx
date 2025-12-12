@@ -314,17 +314,40 @@ const Menu = () => {
                                     </span>
                                 </div>
 
-                                {totalInCart > 0 && (
-                                    <div style={{
-                                        background: 'var(--bg-tertiary)', borderRadius: '50%', width: '30px', height: '30px',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold'
-                                    }}>
-                                        {totalInCart}
-                                    </div>
-                                )}
-                                {totalInCart === 0 && (
-                                    <div style={{ padding: '8px', background: 'var(--bg-tertiary)', borderRadius: '50%' }}>
-                                        <span style={{ fontSize: '1.2rem', lineHeight: 0 }}>+</span>
+                                {totalInCart === 0 ? (
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            updateCartDirect(user?.id || 'guest', item, 1);
+                                        }}
+                                        style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0 }}
+                                    >
+                                        +
+                                    </button>
+                                ) : (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: '20px', padding: '4px' }}>
+                                        <button
+                                            className="btn btn-ghost"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                updateCartDirect(user?.id || 'guest', item, -1);
+                                            }}
+                                            style={{ width: '32px', height: '32px', padding: 0, borderRadius: '50%' }}
+                                        >
+                                            -
+                                        </button>
+                                        <span style={{ fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>{totalInCart}</span>
+                                        <button
+                                            className="btn btn-ghost"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                updateCartDirect(user?.id || 'guest', item, 1);
+                                            }}
+                                            style={{ width: '32px', height: '32px', padding: 0, borderRadius: '50%' }}
+                                        >
+                                            +
+                                        </button>
                                     </div>
                                 )}
                             </div>
