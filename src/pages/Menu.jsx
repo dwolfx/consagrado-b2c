@@ -4,26 +4,20 @@ import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useTablePresence } from '../hooks/useTablePresence';
+import SplitItemModal from '../components/SplitItemModal';
 
 const CATEGORY_ICONS = {
     'Cervejas': Beer,
     'Drinks': Wine,
-    'Petiscos': Pizza, // Using Pizza as generic food icon if needed, or Utensils
+    'Petiscos': Pizza,
     'Lanches': Sandwich,
     'Sem Álcool': Coffee,
     'Sobremesas': IceCream,
     'Pratos': UtensilsCrossed
 };
 
-// Fixed categories list to ensure order and presence
 const CATEGORY_ORDER = [
-    'Cervejas',
-    'Drinks',
-    'Petiscos',
-    'Lanches',
-    'Pratos',
-    'Sem Álcool',
-    'Sobremesas'
+    'Cervejas', 'Drinks', 'Petiscos', 'Lanches', 'Pratos', 'Sem Álcool', 'Sobremesas'
 ];
 
 const Menu = () => {
@@ -34,22 +28,17 @@ const Menu = () => {
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [targetUser, setTargetUser] = useState(user || { id: 'guest', name: 'Você' }); // Default to current user
     const { onlineUsers } = useTablePresence();
 
-    // Cart structure: { userId: { productId: quantity } }
     const [cart, setCart] = useState({});
     const [sending, setSending] = useState(false);
     const [establishmentName, setEstablishmentName] = useState('');
 
-    // Sync user when auth loads
-    useEffect(() => {
-        if (user) setTargetUser(user);
-    }, [user]);
+    // Split Modal State
+    const [splittingItem, setSplittingItem] = useState(null);
 
     useEffect(() => {
         const load = async () => {
-            // ... existing logic ...
             const tableId = localStorage.getItem('my_table_id');
 
             if (!tableId) {
@@ -68,23 +57,16 @@ const Menu = () => {
                 }
             }
 
-            // Loading Products (Shared)
             try {
                 const data = await api.getProducts();
                 setProducts(data);
 
-                // Derive categories from data
                 const uniqueCats = [...new Set(data.map(p => p.category))].filter(Boolean);
-
-                // Sort based on CATEGORY_ORDER
                 const sortedCats = uniqueCats.sort((a, b) => {
                     const idxA = CATEGORY_ORDER.indexOf(a);
                     const idxB = CATEGORY_ORDER.indexOf(b);
-                    // If both in list, sort by index
                     if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                    // If only A in list, A first
                     if (idxA !== -1) return -1;
-                    // If only B in list, B first
                     if (idxB !== -1) return 1;
                     return a.localeCompare(b);
                 });
@@ -102,15 +84,18 @@ const Menu = () => {
     }, []);
 
     const filteredItems = products.filter(item => {
+        // Filter out synthetic split items from the main list display
+        if (item.isSplit) return false;
+
         if (searchTerm.trim()) {
             return item.name.toLowerCase().includes(searchTerm.toLowerCase());
         }
         return item.category === selectedCategory;
     });
 
-    const updateCart = (item, delta) => {
+    // Helper to update cart for a specific user
+    const updateCartDirect = (userId, item, delta) => {
         setCart(prev => {
-            const userId = targetUser.id || 'guest';
             const userCart = prev[userId] || {};
             const currentQty = userCart[item.id] || 0;
             const newQty = Math.max(0, currentQty + delta);
@@ -122,7 +107,6 @@ const Menu = () => {
                 newUserCart[item.id] = newQty;
             }
 
-            // If user cart is empty, remove user key? Optional, but cleaner.
             const newPrev = { ...prev, [userId]: newUserCart };
             if (Object.keys(newUserCart).length === 0) {
                 delete newPrev[userId];
@@ -131,7 +115,51 @@ const Menu = () => {
         });
     };
 
-    // Calculate total across ALL users
+    const handleItemClick = (item) => {
+        // If there are multiple users, open split modal
+        if (onlineUsers.length > 1) {
+            setSplittingItem(item);
+        } else {
+            // Single user, just add to self
+            updateCartDirect(user?.id || 'guest', item, 1);
+        }
+    };
+
+    const handleSplitConfirm = (item, selectedUserIds) => {
+        if (!selectedUserIds || selectedUserIds.length === 0) return;
+
+        // 1. Single User Select (Normal Add)
+        if (selectedUserIds.length === 1) {
+            updateCartDirect(selectedUserIds[0], item, 1);
+        }
+        // 2. Multi User Select (Split logic)
+        else {
+            const count = selectedUserIds.length;
+            const splitPrice = item.price / count;
+            // E.g. "1/2 Pizza" or "1/3 Batata"
+            const splitName = `1/${count} ${item.name}`;
+
+            // Create a synthetic product for this split instance
+            const syntheticProduct = {
+                ...item,
+                id: `${item.id}-split-${Date.now()}`, // Unique ID for this specific split adding
+                name: splitName,
+                price: splitPrice,
+                isSplit: true
+            };
+
+            // Add synthetic product to state so it can be referenced in Cart/API
+            setProducts(prev => [...prev, syntheticProduct]);
+
+            // Add 1 qty to each selected user
+            selectedUserIds.forEach(uid => {
+                updateCartDirect(uid, syntheticProduct, 1);
+            });
+        }
+        setSplittingItem(null);
+    };
+
+    // Calculate total
     const cartTotal = products.reduce((acc, item) => {
         let itemTotalQty = 0;
         Object.values(cart).forEach(userCart => {
@@ -154,12 +182,10 @@ const Menu = () => {
 
         setSending(true);
         try {
-            // Process all items for all users
             const orderPromises = [];
 
             Object.entries(cart).forEach(([userId, userCart]) => {
-                // Find the user name for this ID
-                // If it's me, use my name. If it's an online user, find them.
+                // Determine Name for this User ID
                 let ordererName = 'Cliente';
                 if (userId === user?.id) ordererName = user?.name || 'Eu';
                 else {
@@ -170,22 +196,26 @@ const Menu = () => {
                 Object.entries(userCart).forEach(([productId, qty]) => {
                     const product = products.find(p => String(p.id) === String(productId));
                     if (product) {
+                        // Pass correctly to API
                         orderPromises.push(api.addOrder(tableId, {
-                            productId: product.id,
+                            productId: product.isSplit ? null : product.id, // If split, maybe null to treat as ad-hoc? Or pass synthetic ID? 
+                            // API uses productId for referencing. If I pass a random string it might fail FK constraints if API enforces it.
+                            // Checking API: `product_id: orderItem.productId`. DB `product_id` is uuid/int? 
+                            // Seed uses INT 101, 102. DB Schema usually allows NULL product_id for custom items.
+                            // Let's pass NULL for splits to avoid FK error, since synthetic ID doesn't exist in 'products' table.
                             name: product.name,
                             price: product.price,
                             quantity: qty,
-                            orderedBy: ordererName // Use the specific user's name
+                            orderedBy: ordererName
                         }));
                     }
                 });
             });
 
-            await Promise.all(orderPromises.filter(p => p !== null));
-
+            await Promise.all(orderPromises);
             alert('Pedido enviado para a cozinha! 👨‍🍳');
             setCart({});
-            navigate('/'); // Back to Home
+            navigate('/');
         } catch (error) {
             console.error("Error sending order", error);
             alert('Erro ao enviar pedido :(');
@@ -194,10 +224,11 @@ const Menu = () => {
         }
     };
 
-    if (loading) return <div className="container" style={{ justifyContent: 'center', textAlign: 'center' }}>Carregando cardápio...</div>;
+    if (loading) return <div className="container center-content">Carregando...</div>;
 
     return (
         <div className="container" style={{ paddingBottom: '6rem' }}>
+            {/* Header */}
             <header style={{ padding: '1rem 0', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                 <button onClick={() => navigate(-1)} className="btn-ghost" style={{ width: 'auto', padding: 0 }}>
                     <ArrowLeft />
@@ -214,77 +245,6 @@ const Menu = () => {
                     <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                 </div>
             </header>
-
-            {/* User Switcher (Target Order) */}
-            {onlineUsers.length > 1 && (
-                <div style={{ marginBottom: '1.5rem' }}>
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', marginLeft: '0.25rem' }}>
-                        Pedindo para:
-                    </p>
-                    <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '0.5rem', scrollbarWidth: 'none' }}>
-                        {/* Me */}
-                        <div
-                            onClick={() => setTargetUser(user || { id: 'guest', name: 'Você' })}
-                            style={{
-                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', cursor: 'pointer',
-                                opacity: targetUser.id === user?.id ? 1 : 0.5, transition: 'opacity 0.2s'
-                            }}
-                        >
-                            <div style={{
-                                width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden',
-                                border: targetUser.id === user?.id ? '2px solid var(--success)' : '2px solid transparent',
-                                boxShadow: targetUser.id === user?.id ? '0 0 10px rgba(16, 185, 129, 0.4)' : 'none'
-                            }}>
-                                <img
-                                    src={`https://ui-avatars.com/api/?name=${user?.name || 'Eu'}&background=random`}
-                                    alt="Eu" style={{ width: '100%', height: '100%' }}
-                                />
-                            </div>
-                            <span style={{ fontSize: '0.75rem', fontWeight: targetUser.id === user?.id ? 'bold' : 'normal' }}>Eu</span>
-                        </div>
-
-                        {/* Mates */}
-                        {onlineUsers.filter(u => u.id !== user?.id).map(mate => {
-                            const isSelected = targetUser.id === mate.id;
-                            const mateQty = Object.values(cart[mate.id] || {}).reduce((a, b) => a + b, 0); // Items associated with this user
-
-                            return (
-                                <div
-                                    key={mate.id}
-                                    onClick={() => setTargetUser(mate)}
-                                    style={{
-                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', cursor: 'pointer',
-                                        opacity: isSelected ? 1 : 0.5, transition: 'opacity 0.2s', position: 'relative'
-                                    }}
-                                >
-                                    <div style={{
-                                        width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden',
-                                        border: isSelected ? '2px solid var(--primary)' : '2px solid transparent', // Blue for friends
-                                        boxShadow: isSelected ? '0 0 10px rgba(99, 102, 241, 0.4)' : 'none'
-                                    }}>
-                                        <img src={mate.avatar_url || 'https://via.placeholder.com/56'} alt={mate.name} style={{ width: '100%', height: '100%' }} />
-                                    </div>
-                                    <span style={{ fontSize: '0.75rem', fontWeight: isSelected ? 'bold' : 'normal', maxWidth: '60px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {mate.name.split(' ')[0]}
-                                    </span>
-
-                                    {/* Badge for items in cart for this user */}
-                                    {mateQty > 0 && (
-                                        <div style={{
-                                            position: 'absolute', top: 0, right: 0,
-                                            background: 'var(--primary)', color: 'white', fontSize: '0.7rem',
-                                            width: '18px', height: '18px', borderRadius: '50%',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                        }}>
-                                            {mateQty}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
 
             {/* Categories */}
             {!searchTerm && (
@@ -323,25 +283,26 @@ const Menu = () => {
                 </div>
             )}
 
-            {/* Items */}
+            {/* Product List */}
             <div>
                 <h3 style={{ marginBottom: '1rem', textTransform: 'capitalize' }}>
-                    {searchTerm ? `Resultados para "${searchTerm}"` : selectedCategory}
+                    {searchTerm ? `Resultados` : selectedCategory}
                 </h3>
 
                 <div style={{ display: 'grid', gap: '1rem' }}>
                     {filteredItems.map(item => {
-                        const userId = targetUser.id || 'guest';
-                        const userCart = cart[userId] || {};
-                        const qty = userCart[item.id] || 0;
+                        // Calculate total in cart for this item (across everyone)
+                        let totalInCart = 0;
+                        Object.values(cart).forEach(uCart => totalInCart += (uCart[item.id] || 0));
+
                         return (
                             <div
                                 key={item.id}
                                 className="card"
-                                onClick={() => updateCart(item, 1)}
+                                onClick={() => handleItemClick(item)}
                                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0, cursor: 'pointer' }}
                             >
-                                <div style={{ flex: 1, width: '100%' }}>
+                                <div style={{ flex: 1 }}>
                                     <h4 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{item.name}</h4>
                                     {item.description && (
                                         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
@@ -353,40 +314,17 @@ const Menu = () => {
                                     </span>
                                 </div>
 
-                                {qty === 0 ? (
-                                    <button
-                                        className="btn btn-secondary"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            updateCart(item, 1);
-                                        }}
-                                        style={{ width: '40px', height: '40px', borderRadius: '50%', padding: 0 }}
-                                    >
-                                        +
-                                    </button>
-                                ) : (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: 'var(--bg-tertiary)', borderRadius: '20px', padding: '4px' }}>
-                                        <button
-                                            className="btn btn-ghost"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                updateCart(item, -1);
-                                            }}
-                                            style={{ width: '32px', height: '32px', padding: 0, borderRadius: '50%' }}
-                                        >
-                                            -
-                                        </button>
-                                        <span style={{ fontWeight: 'bold', minWidth: '20px', textAlign: 'center' }}>{qty}</span>
-                                        <button
-                                            className="btn btn-ghost"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                updateCart(item, 1);
-                                            }}
-                                            style={{ width: '32px', height: '32px', padding: 0, borderRadius: '50%' }}
-                                        >
-                                            +
-                                        </button>
+                                {totalInCart > 0 && (
+                                    <div style={{
+                                        background: 'var(--bg-tertiary)', borderRadius: '50%', width: '30px', height: '30px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold'
+                                    }}>
+                                        {totalInCart}
+                                    </div>
+                                )}
+                                {totalInCart === 0 && (
+                                    <div style={{ padding: '8px', background: 'var(--bg-tertiary)', borderRadius: '50%' }}>
+                                        <span style={{ fontSize: '1.2rem', lineHeight: 0 }}>+</span>
                                     </div>
                                 )}
                             </div>
@@ -426,6 +364,17 @@ const Menu = () => {
                         </span>
                     </button>
                 </div>
+            )}
+
+            {/* SPLIT MODAL */}
+            {splittingItem && (
+                <SplitItemModal
+                    item={splittingItem}
+                    currentUser={user || { id: 'guest', name: 'Você' }}
+                    onlineUsers={onlineUsers.length > 0 ? onlineUsers : [user || { id: 'guest', name: 'Você' }]}
+                    onClose={() => setSplittingItem(null)}
+                    onConfirm={handleSplitConfirm}
+                />
             )}
         </div>
     );

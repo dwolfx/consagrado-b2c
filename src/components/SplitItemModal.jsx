@@ -1,0 +1,129 @@
+import React, { useState } from 'react';
+import { X, Check } from 'lucide-react';
+
+const SplitItemModal = ({
+    item,
+    currentUser,
+    onlineUsers,
+    onClose,
+    onConfirm
+}) => {
+    const [selectedUsers, setSelectedUsers] = useState([currentUser.id]); // Default to self
+
+    const toggleUser = (userId) => {
+        setSelectedUsers(prev => {
+            if (prev.includes(userId)) {
+                // Prevent unselecting if it's the only one? No, allow it but disable confirm button
+                return prev.filter(id => id !== userId);
+            } else {
+                return [...prev, userId];
+            }
+        });
+    };
+
+    const handleConfirm = () => {
+        if (selectedUsers.length === 0) return;
+        onConfirm(item, selectedUsers);
+    };
+
+    const selectAll = () => {
+        const allIds = onlineUsers.map(u => u.id);
+        // If all are already selected, deselect all (except self maybe?) -> Toggle logic
+        // But requested is "Dividir com todos". So simple Select All.
+        setSelectedUsers(allIds);
+    };
+
+    return (
+        <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.7)', zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem',
+            animation: 'fadeIn 0.2s'
+        }}>
+            <div className="card" style={{
+                width: '100%', maxWidth: '350px', background: 'var(--bg-secondary)',
+                border: '1px solid var(--bg-tertiary)', padding: '1.5rem',
+                flexDirection: 'column', gap: '1rem',
+                animation: 'scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                margin: 0
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ fontSize: '1.2rem', margin: 0 }}>Dividir Item?</h3>
+                    <button onClick={onClose} className="btn-ghost" style={{ padding: '8px' }}>
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div style={{ padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 'bold' }}>{item.name}</span>
+                    <span style={{ color: 'var(--primary)' }}>
+                        {item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                </div>
+
+                <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Quem vai consumir?</p>
+                        <button onClick={selectAll} style={{
+                            background: 'none', border: 'none', color: 'var(--primary)',
+                            fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer'
+                        }}>
+                            Todos da mesa
+                        </button>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: '0.75rem' }}>
+                        {onlineUsers.map(u => {
+                            const isSelected = selectedUsers.includes(u.id);
+                            const isSelf = u.id === currentUser.id;
+
+                            return (
+                                <div key={u.id} onClick={() => toggleUser(u.id)} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+                                    <div style={{
+                                        width: '48px', height: '48px', borderRadius: '50%', overflow: 'hidden',
+                                        border: isSelected ? '3px solid var(--primary)' : '3px solid transparent',
+                                        opacity: isSelected ? 1 : 0.5,
+                                        transition: 'all 0.2s'
+                                    }}>
+                                        <img src={u.avatar_url || `https://ui-avatars.com/api/?name=${u.name}&background=random`} alt={u.name} style={{ width: '100%', height: '100%' }} />
+                                    </div>
+                                    <span style={{ fontSize: '0.7rem', fontWeight: isSelected ? 'bold' : 'normal', textAlign: 'center' }}>
+                                        {isSelf ? 'Eu' : u.name.split(' ')[0]}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {selectedUsers.length > 1 && (
+                        <div style={{
+                            textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)',
+                            background: 'var(--bg-tertiary)', padding: '6px', borderRadius: '8px'
+                        }}>
+                            Cada um paga: <strong>{(item.price / selectedUsers.length).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={handleConfirm}
+                        disabled={selectedUsers.length === 0}
+                        className="btn btn-primary"
+                        style={{ width: '100%', justifyContent: 'center', padding: '1rem', fontSize: '1rem' }}
+                    >
+                        Adicionar {selectedUsers.length > 1 ? `para ${selectedUsers.length}` : ''} <Check size={18} style={{ marginLeft: '8px' }} />
+                    </button>
+                </div>
+
+            </div>
+            <style>{`
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes scaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+            `}</style>
+        </div>
+    );
+};
+
+export default SplitItemModal;
