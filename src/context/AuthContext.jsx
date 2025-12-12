@@ -21,57 +21,7 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         try {
-            // ---------------------------------------------------------
-            // 1. DEMO BYPASS
-            // ---------------------------------------------------------
-            // ---------------------------------------------------------
-            // 1. DEMO BYPASS (Universal for Sales Pitch)
-            // ---------------------------------------------------------
-            if (password === 'demo') {
-                let targetDemoUser = null;
-
-                // Main User
-                if (email === 'demo@demo' || email === 'demo@demo.com') {
-                    targetDemoUser = {
-                        id: '00000000-0000-0000-0000-000000000000',
-                        name: 'Demo User',
-                        email: 'demo@demo',
-                        role: 'customer',
-                        avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=demo&backgroundColor=b6e3f4'
-                    };
-                }
-                // Friend User (Amiga)
-                else if (email === 'amigo@demo' || email === 'amigo@demo.com') {
-                    targetDemoUser = {
-                        id: '22222222-2222-2222-2222-222222222222',
-                        name: 'Amiga da Demo',
-                        email: 'amigo@demo.com',
-                        role: 'customer',
-                        avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Amiga&backgroundColor=ffdfbf'
-                    };
-                }
-
-                if (targetDemoUser) {
-                    // Try to find if user really exists in DB to use their REAL data (e.g. if they changed avatar)
-                    // We use the ID to check because Email might vary in DB vs Bypass
-                    const { data } = await supabase.from('users').select('*').eq('id', targetDemoUser.id).single();
-
-                    if (data) {
-                        setUser(data);
-                        localStorage.setItem('garcom_user', JSON.stringify(data));
-                        return true;
-                    }
-
-                    // Fallback to memory object
-                    setUser(targetDemoUser);
-                    localStorage.setItem('garcom_user', JSON.stringify(targetDemoUser));
-                    return true;
-                }
-            }
-
-            // ---------------------------------------------------------
-            // 2. SUPABASE NATIVE AUTH
-            // ---------------------------------------------------------
+            // SUPABASE NATIVE AUTH (Secure Beta Environment)
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email,
                 password
@@ -82,7 +32,6 @@ export const AuthProvider = ({ children }) => {
                 return false;
             }
 
-            // 3. Fetch User Profile
             if (authData.user) {
                 const { data: profile } = await supabase
                     .from('users')
@@ -90,7 +39,6 @@ export const AuthProvider = ({ children }) => {
                     .eq('id', authData.user.id)
                     .single();
 
-                // Fallback object if profile missing (shouldn't happen with correct flow)
                 const userObj = profile || {
                     id: authData.user.id,
                     email: authData.user.email,

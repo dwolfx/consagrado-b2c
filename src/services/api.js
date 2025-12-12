@@ -26,12 +26,31 @@ export const api = {
         return data || [];
     },
     getTable: async (id) => {
-        let { data, error } = await supabase
+        const { data, error } = await supabase
             .from('tables')
-            .select('*, orders(*)')
+            .select(`
+                *,
+                establishment:establishments(*),
+                orders:orders(*)
+            `)
             .eq('id', id)
             .single();
-        if (error) console.error('Error fetching table', error);
+
+        if (error) console.error("Error fetching table", error);
+        return data;
+    },
+
+    getTableByCode: async (code) => {
+        const { data, error } = await supabase
+            .from('tables')
+            .select(`
+                *,
+                establishment:establishments(*)
+            `)
+            .eq('code', code) // Case sensitive? User asked for alphanumeric. Typically uppercase.
+            .single();
+
+        if (error) console.log("Error fetching table by code", error);
         return data;
     },
     // Orders
@@ -107,5 +126,43 @@ export const api = {
             .eq('password', password)
             .single();
         return data;
+    },
+
+    // DEMO UTILS (Reset/Clear)
+    clearTableOrders: async (tableId) => {
+        const { error } = await supabase
+            .from('orders')
+            .delete()
+            .eq('table_id', tableId);
+
+        if (error) console.error('Error clearing table', error);
+        return !error;
+    },
+
+    resetDemoData: async (tableId) => {
+        // 1. Clear first
+        await api.clearTableOrders(tableId);
+
+        // 2. Insert Seed Items (Water, Wine, Pizza) to restore "Mid-Meal" state
+        const now = new Date();
+        const past30 = new Date(now.getTime() - 30 * 60000).toISOString();
+        const past25 = new Date(now.getTime() - 25 * 60000).toISOString();
+        const past15 = new Date(now.getTime() - 15 * 60000).toISOString();
+
+        const orders = [
+            // Water
+            { table_id: tableId, product_id: 102, quantity: 1, status: 'delivered', ordered_by: '22222222-2222-2222-2222-222222222222', name: 'Água com Gás', price: 4.50, created_at: past30 },
+            { table_id: tableId, product_id: 102, quantity: 1, status: 'delivered', ordered_by: '00000000-0000-0000-0000-000000000000', name: 'Água com Gás', price: 4.50, created_at: past30 },
+            // Wine (Split)
+            { table_id: tableId, product_id: 103, quantity: 1, status: 'delivered', ordered_by: '00000000-0000-0000-0000-000000000000', name: '1/2 Vinho Malbec', price: 50.00, created_at: past25 },
+            { table_id: tableId, product_id: 103, quantity: 1, status: 'delivered', ordered_by: '22222222-2222-2222-2222-222222222222', name: '1/2 Vinho Malbec', price: 50.00, created_at: past25 },
+            // Pizza (Split)
+            { table_id: tableId, product_id: 101, quantity: 1, status: 'delivered', ordered_by: '00000000-0000-0000-0000-000000000000', name: '1/2 Pizza Margherita', price: 22.50, created_at: past15 },
+            { table_id: tableId, product_id: 101, quantity: 1, status: 'delivered', ordered_by: '22222222-2222-2222-2222-222222222222', name: '1/2 Pizza Margherita', price: 22.50, created_at: past15 }
+        ];
+
+        const { error } = await supabase.from('orders').insert(orders);
+        if (error) console.error('Error resetting demo', error);
+        return !error;
     }
 };

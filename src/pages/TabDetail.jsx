@@ -111,8 +111,21 @@ const TabDetail = () => {
                     </div>
                 ) : (
                     visibleOrders.map(item => {
-                        const isMine = item.ordered_by === user?.id; // Correct ID Check
+                        const isMine = item.ordered_by === user?.id;
                         const displayName = isMine ? 'Você' : resolveName(item.ordered_by);
+
+                        const getStatusConfig = (s) => {
+                            switch (s) {
+                                case 'pending': return { label: 'Aguardando', color: '#b45309', bg: '#fef3c7' }; // Yellow-700/100
+                                case 'preparing': return { label: 'Preparando', color: '#1d4ed8', bg: '#dbeafe' }; // Blue-700/100
+                                case 'ready':
+                                case 'delivered':
+                                case 'completed': return { label: 'Entregando', color: '#15803d', bg: '#dcfce7' }; // Green-700/100
+                                case 'paid': return { label: 'Pago', color: '#15803d', bg: '#dcfce7' };
+                                default: return { label: s, color: '#374151', bg: '#f3f4f6' };
+                            }
+                        };
+                        const statusConfig = getStatusConfig(item.status);
 
                         return (
                             <div key={item.id} className="card" style={{ marginBottom: 0, borderLeft: isMine ? '4px solid var(--primary)' : 'none' }}>
@@ -129,12 +142,12 @@ const TabDetail = () => {
                                         {displayName}
                                     </span>
                                     <span style={{
-                                        fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px',
-                                        backgroundColor: item.status === 'paid' ? '#dcfce7' : 'var(--bg-tertiary)',
-                                        color: item.status === 'paid' ? '#166534' : 'var(--text-secondary)',
-                                        fontWeight: '600', textTransform: 'uppercase'
+                                        fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px',
+                                        backgroundColor: statusConfig.bg,
+                                        color: statusConfig.color,
+                                        fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px'
                                     }}>
-                                        {item.status === 'paid' ? 'Pago' : (item.status === 'pending' ? 'Enviado' : item.status)}
+                                        {statusConfig.label}
                                     </span>
                                 </div>
                             </div>

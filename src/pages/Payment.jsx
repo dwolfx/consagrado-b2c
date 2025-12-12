@@ -68,10 +68,20 @@ const Payment = () => {
         setShowRemoveModal(false);
     };
 
-    const handlePayment = () => {
-        // Here we would integrate stripe/mercado pago
+    const handlePayment = async () => {
+        setLoading(true);
+        // Simulate payment delay
+        await new Promise(r => setTimeout(r, 1500));
+
+        // Clear from Database (User Req: "Limpe tudo da mesa")
+        const tableId = localStorage.getItem('my_table_id');
+        if (tableId) {
+            await api.clearTableOrders(tableId);
+        }
+
         setSuccess(true);
-        // Clear table session
+        setLoading(false);
+        // Clear table session local
         localStorage.removeItem('my_table_id');
     };
 

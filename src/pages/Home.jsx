@@ -293,6 +293,27 @@ const Home = () => {
                                 </div>
                                 <ChevronRight size={20} color="var(--text-muted)" />
                             </button>
+
+                            {/* DEMO RESET BUTTON (Visible to Demo Only) */}
+                            {(user?.email === 'demo@demo' || user?.email === 'demo@demo.com') && (
+                                <button
+                                    onClick={async () => {
+                                        if (window.confirm("Reiniciar cenário de DEMO? Isso restaurará, Água, Vinho e Pizza.")) {
+                                            setLoading(true);
+                                            await api.resetDemoData(1);
+                                            window.location.reload();
+                                        }
+                                    }}
+                                    style={{
+                                        marginTop: '1rem', width: '100%', padding: '0.8rem',
+                                        background: 'transparent', border: '1px dashed var(--text-muted)',
+                                        color: 'var(--text-muted)', borderRadius: '12px', cursor: 'pointer',
+                                        fontSize: '0.8rem'
+                                    }}
+                                >
+                                    🔄 Reiniciar Cenário Demo
+                                </button>
+                            )}
                         </div>
                     </>
                 )}

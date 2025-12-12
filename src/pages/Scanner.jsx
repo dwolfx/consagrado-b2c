@@ -1,9 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { api } from '../services/api';
+import { useState } from 'react';
 
 const Scanner = () => {
     const navigate = useNavigate();
+    const [manualCode, setManualCode] = useState('');
+    const [error, setError] = useState('');
 
     const handleSimulation = async () => {
         try {
@@ -21,6 +24,26 @@ const Scanner = () => {
             // Fallback for demo if offline/error
             localStorage.setItem('my_table_id', '123');
             navigate('/');
+        }
+    };
+
+    const handleManualSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+
+        if (!manualCode || manualCode.length < 3) return;
+
+        try {
+            const table = await api.getTableByCode(manualCode);
+            if (table && table.id) {
+                localStorage.setItem('my_table_id', table.id);
+                navigate('/');
+            } else {
+                setError('Mesa não encontrada. Verifique o código.');
+            }
+        } catch (err) {
+            console.error(err);
+            setError('Erro ao buscar mesa.');
         }
     };
 
@@ -56,9 +79,43 @@ const Scanner = () => {
                 <p style={{ marginTop: '2rem', color: 'white', fontSize: '1.25rem' }}>
                     Aponte para o QR Code da mesa
                 </p>
-                <p style={{ marginTop: '0.5rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem' }}>
+                <p style={{ marginTop: '0.5rem', color: 'rgba(255,255,255,0.5)', fontSize: '0.9rem', marginBottom: '2rem' }}>
                     (Toque no quadrado para simular)
                 </p>
+
+                <div style={{ width: '100%', maxWidth: '300px', padding: '0 1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
+                    <p style={{ color: 'white', textAlign: 'center', marginBottom: '1rem', fontWeight: 'bold' }}>OU</p>
+
+                    <form onSubmit={handleManualSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <label style={{ color: 'rgba(255,255,255,0.7)', fontSize: '0.9rem' }}>Insira o código da mesa</label>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <input
+                                type="text"
+                                value={manualCode}
+                                onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+                                placeholder="Ex: AA0001"
+                                style={{
+                                    flex: 1, padding: '12px', borderRadius: '8px', border: 'none',
+                                    background: 'rgba(255,255,255,0.1)', color: 'white',
+                                    fontSize: '1rem', textTransform: 'uppercase', outline: 'none', border: '1px solid rgba(255,255,255,0.2)'
+                                }}
+                            />
+                            <button
+                                type="submit"
+                                style={{
+                                    padding: '0 20px', borderRadius: '8px', border: 'none',
+                                    background: 'var(--primary)', color: 'white', fontWeight: 'bold',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                IR
+                            </button>
+                        </div>
+                        {error && (
+                            <span style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '4px' }}>{error}</span>
+                        )}
+                    </form>
+                </div>
             </div>
             <style>{`
                 @keyframes scan {
