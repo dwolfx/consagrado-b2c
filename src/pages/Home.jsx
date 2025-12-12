@@ -31,7 +31,7 @@ const Home = () => {
                     if (tableData && tableData.establishment) {
                         setEstablishment(tableData.establishment);
                         // Inject Brand Color if available, else default Gold
-                        const brandColor = tableData.establishment.brandColor || '#f59e0b';
+                        const brandColor = tableData.establishment.theme_color || '#f59e0b';
                         document.documentElement.style.setProperty('--brand-color', brandColor);
                     }
                     // Check for active orders (Simulated)

@@ -44,10 +44,13 @@ const TabDetail = () => {
     // Actually, Menu sends: user?.name || 'Eu' (if explicit guest) or 'Cliente'.
     const myName = user?.name || 'Eu';
 
-    const myOrders = orders.filter(o => o.ordered_by === myName);
+    // Filter out internal notification items (e.g. Call Waiter)
+    const visibleOrders = orders.filter(o => o.name !== '🔔 CHAMAR GARÇOM');
+
+    const myOrders = visibleOrders.filter(o => o.ordered_by === myName);
     const myTotal = myOrders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-    const totalTab = orders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const totalTab = visibleOrders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
     const formatPrice = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -83,12 +86,12 @@ const TabDetail = () => {
             <h3 style={{ marginBottom: '1rem', marginTop: '1rem' }}>Consumo da Mesa</h3>
 
             <div style={{ display: 'grid', gap: '1rem' }}>
-                {orders.length === 0 ? (
+                {visibleOrders.length === 0 ? (
                     <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
                         Nenhum pedido ainda.
                     </div>
                 ) : (
-                    orders.map(item => {
+                    visibleOrders.map(item => {
                         const isMine = item.ordered_by === myName;
                         return (
                             <div key={item.id} className="card" style={{ marginBottom: 0, borderLeft: isMine ? '4px solid var(--primary)' : 'none' }}>
