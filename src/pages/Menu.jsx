@@ -84,9 +84,10 @@ const Menu = () => {
                 } finally {
                     setLoading(false);
                 }
-            };
-            load();
-        }, []);
+            }
+        };
+        load();
+    }, []);
 
     const tableId = localStorage.getItem('my_table_id');
 
