@@ -58,32 +58,29 @@ const Menu = () => {
                 } catch (e) { console.error(e); }
             } else {
                 // Existing Table Logic
-
                 try {
                     // Fetch Table Details to get Establishment Name
-                    // We handle the case where api.getTable might fail or return null
-                    try {
-                        const tableData = await api.getTable(tableId);
-                        if (tableData && tableData.establishment) {
-                            setEstablishmentName(tableData.establishment.name);
-                        }
-                    } catch (e) {
-                        console.error("Error fetching table info", e);
+                    const tableData = await api.getTable(tableId);
+                    if (tableData && tableData.establishment) {
+                        setEstablishmentName(tableData.establishment.name);
                     }
-
-                    const data = await api.getProducts();
-                    setProducts(data);
-
-                    // Use fixed categories, but filter to ensure we at least have logic
-                    // For now, valid categories are just the fixed ones
-                    setCategories(FIXED_CATEGORIES);
-                    setSelectedCategory(FIXED_CATEGORIES[0]);
-
-                } catch (error) {
-                    console.error("Failed to load menu", error);
-                } finally {
-                    setLoading(false);
+                } catch (e) {
+                    console.error("Error fetching table info", e);
                 }
+            }
+
+            // Loading Products (Shared)
+            try {
+                const data = await api.getProducts();
+                setProducts(data);
+
+                setCategories(FIXED_CATEGORIES);
+                setSelectedCategory(FIXED_CATEGORIES[0]);
+
+            } catch (error) {
+                console.error("Failed to load menu", error);
+            } finally {
+                setLoading(false);
             }
         };
         load();
