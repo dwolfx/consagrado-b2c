@@ -51,64 +51,51 @@ const Menu = () => {
             const tableId = localStorage.getItem('my_table_id');
 
             if (!tableId) {
-                // If no table, stop loading and we will render the blocked state
-                setLoading(false);
-                return;
-            }
-
-            try {
-                // Fetch Table Details to get Establishment Name
-                // We handle the case where api.getTable might fail or return null
+                // FALLBACK DEMO: Fetch Establishment 1 Name
                 try {
-                    const tableData = await api.getTable(tableId);
-                    if (tableData && tableData.establishment) {
-                        setEstablishmentName(tableData.establishment.name);
+                    const estab = await api.getEstablishment(1);
+                    if (estab) setEstablishmentName(estab.name);
+                } catch (e) { console.error(e); }
+            } else {
+                // Existing Table Logic
+
+                try {
+                    // Fetch Table Details to get Establishment Name
+                    // We handle the case where api.getTable might fail or return null
+                    try {
+                        const tableData = await api.getTable(tableId);
+                        if (tableData && tableData.establishment) {
+                            setEstablishmentName(tableData.establishment.name);
+                        }
+                    } catch (e) {
+                        console.error("Error fetching table info", e);
                     }
-                } catch (e) {
-                    console.error("Error fetching table info", e);
+
+                    const data = await api.getProducts();
+                    setProducts(data);
+
+                    // Use fixed categories, but filter to ensure we at least have logic
+                    // For now, valid categories are just the fixed ones
+                    setCategories(FIXED_CATEGORIES);
+                    setSelectedCategory(FIXED_CATEGORIES[0]);
+
+                } catch (error) {
+                    console.error("Failed to load menu", error);
+                } finally {
+                    setLoading(false);
                 }
-
-                const data = await api.getProducts();
-                setProducts(data);
-
-                // Use fixed categories, but filter to ensure we at least have logic
-                // For now, valid categories are just the fixed ones
-                setCategories(FIXED_CATEGORIES);
-                setSelectedCategory(FIXED_CATEGORIES[0]);
-
-            } catch (error) {
-                console.error("Failed to load menu", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        load();
-    }, []);
+            };
+            load();
+        }, []);
 
     const tableId = localStorage.getItem('my_table_id');
 
-    if (!tableId) {
-        return (
-            <div className="container" style={{ justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
-                <div style={{
-                    width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'var(--bg-tertiary)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto'
-                }}>
-                    <Search size={40} color="var(--text-secondary)" />
-                </div>
-                <h2>Ops! Sem mesa.</h2>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-                    Para ver o cardápio e fazer pedidos, você precisa ler o QR Code da mesa primeiro.
-                </p>
-                <button onClick={() => navigate('/scanner')} className="btn btn-primary" style={{ width: '100%' }}>
-                    Ler QR Code Agora
-                </button>
-                <button onClick={() => navigate('/')} className="btn btn-ghost" style={{ width: '100%', marginTop: '0.5rem' }}>
-                    Voltar
-                </button>
-            </div>
-        );
-    }
+    // const tableId defined inside load() and at component level. 
+    // Cleaning up logic.
+    // The component logic relies on `tableId` constant declared at line 91 (in original file, 91 was correct).
+    // But wait, line 91 and 93 both declare it.
+    // Let's just remove the duplicate lines 93-94 entirely.
+
 
     const filteredItems = products.filter(item => item.category === selectedCategory);
 

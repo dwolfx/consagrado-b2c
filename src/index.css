@@ -1,19 +1,28 @@
 :root {
   /* Premium Dark Palette (Zinc/Slate) */
-  --bg-primary: #09090b;   /* Zinc 950 */
-  --bg-secondary: #18181b; /* Zinc 900 */
-  --bg-tertiary: #27272a;  /* Zinc 800 */
-  
-  --text-primary: #fafafa; /* Zinc 50 */
-  --text-secondary: #a1a1aa; /* Zinc 400 */
-  --text-muted: #52525b;   /* Zinc 600 */
+  --bg-primary: #09090b;
+  /* Zinc 950 */
+  --bg-secondary: #18181b;
+  /* Zinc 900 */
+  --bg-tertiary: #27272a;
+  /* Zinc 800 */
+
+  --text-primary: #fafafa;
+  /* Zinc 50 */
+  --text-secondary: #a1a1aa;
+  /* Zinc 400 */
+  --text-muted: #52525b;
+  /* Zinc 600 */
 
   /* Brand Colors - Dynamic */
   /* Default to a Premium Gold/Amber if not set */
-  --brand-color: #f59e0b; 
-  --brand-contrast: #000000; /* Text color on top of brand */
+  --brand-color: #f59e0b;
+  --brand-contrast: #000000;
+  /* Text color on top of brand */
 
   /* Semantic Colors */
+  --primary: var(--brand-color);
+  /* Alias for generic primary usage */
   --success: #10b981;
   --danger: #ef4444;
   --warning: #f59e0b;
@@ -23,7 +32,7 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
-  
+
   --font-family: 'Inter', system-ui, -apple-system, sans-serif;
 
   /* Shadows - Subtle */
@@ -50,21 +59,33 @@ body {
   /* subtle noise texture optional, sticking to clean solid for performance */
 }
 
-h1, h2, h3, h4 {
+h1,
+h2,
+h3,
+h4 {
   font-weight: 600;
   letter-spacing: -0.02em;
   color: var(--text-primary);
 }
 
-input, button, textarea {
+input,
+button,
+textarea {
   font-family: inherit;
   color: inherit;
 }
 
 /* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .fade-in {
@@ -123,32 +144,40 @@ header.glass-header {
   border-radius: var(--radius-md);
   font-weight: 600;
   font-size: 1rem;
-  border: 1px solid transparent; /* Ensure border exists for layout stability */
+  border: 1px solid transparent;
+  /* Ensure border exists for layout stability */
   cursor: pointer;
   transition: all 0.2s;
   gap: 0.5rem;
 }
 
 .btn:active {
-  opacity: 0.9; /* Subtle opacity change */
+  opacity: 0.9;
+  /* Subtle opacity change */
   transform: scale(0.98);
 }
 
 .btn-primary {
   background-color: var(--brand-color);
-  color: var(--brand-contrast); /* Ensure high contrast text */
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2); /* Slightly stronger shadow */
-  border: 1px solid rgba(255,255,255,0.1); /* Subtle inner light border */
+  color: var(--brand-contrast);
+  /* Ensure high contrast text */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  /* Slightly stronger shadow */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  /* Subtle inner light border */
 }
 
 .btn-secondary {
   background-color: var(--bg-tertiary);
-  color: var(--text-primary); /* White text on dark gray */
-  border: 1px solid rgba(255,255,255,0.1); /* Crisp border */
+  color: var(--text-primary);
+  /* White text on dark gray */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  /* Crisp border */
 }
 
 .btn-secondary:hover {
-    background-color: var(--bg-secondary); /* Lighter on hover */
+  background-color: var(--bg-secondary);
+  /* Lighter on hover */
 }
 
 .btn-ghost {
@@ -161,7 +190,7 @@ header.glass-header {
 .btn-ghost:active {
   background: var(--bg-tertiary);
   color: var(--text-primary);
-  border-color: rgba(255,255,255,0.05);
+  border-color: rgba(255, 255, 255, 0.05);
 }
 
 /* Badge */
@@ -175,9 +204,9 @@ header.glass-header {
 }
 
 .status-badge {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--success);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.2);
 }
 
 /* Inputs */
