@@ -128,6 +128,40 @@ const Home = () => {
                             }}>
                                 <MapPin size={16} /> Mesa {tableId}
                             </span>
+
+                            {/* Avatar Stack */}
+                            {onlineUsers.length > 1 && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '1rem' }}>
+                                    <div style={{ display: 'flex' }}>
+                                        {onlineUsers.slice(0, 5).map((u, i) => (
+                                            <img
+                                                key={u.id}
+                                                src={u.avatar_url || `https://ui-avatars.com/api/?name=${u.name}&background=random`}
+                                                alt={u.name}
+                                                style={{
+                                                    width: '32px', height: '32px', borderRadius: '50%',
+                                                    border: '2px solid var(--bg-primary)',
+                                                    marginLeft: i > 0 ? '-10px' : '0',
+                                                    zIndex: 10 - i
+                                                }}
+                                                title={u.name}
+                                            />
+                                        ))}
+                                        {onlineUsers.length > 5 && (
+                                            <div style={{
+                                                width: '32px', height: '32px', borderRadius: '50%',
+                                                background: 'var(--bg-tertiary)', color: 'var(--text-secondary)',
+                                                border: '2px solid var(--bg-primary)',
+                                                marginLeft: '-10px', zIndex: 0,
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: '0.75rem', fontWeight: 'bold'
+                                            }}>
+                                                {onlineUsers.length - 5 > 9 ? '9+' : `+${onlineUsers.length - 5}`}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* 1. CARDÁPIO (Fazer Pedido) */}
@@ -177,7 +211,7 @@ const Home = () => {
                                 }}
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Minha Conta</span>
+                                    <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Minha Comanda</span>
                                     <Receipt size={20} style={{ opacity: 0.3 }} />
                                 </div>
 

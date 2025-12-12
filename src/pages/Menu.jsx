@@ -16,7 +16,7 @@ const CATEGORY_ICONS = {
 };
 
 // Fixed categories list to ensure order and presence
-const FIXED_CATEGORIES = [
+const CATEGORY_ORDER = [
     'Cervejas',
     'Drinks',
     'Petiscos',
@@ -73,8 +73,24 @@ const Menu = () => {
                 const data = await api.getProducts();
                 setProducts(data);
 
-                setCategories(FIXED_CATEGORIES);
-                setSelectedCategory(FIXED_CATEGORIES[0]);
+                // Derive categories from data
+                const uniqueCats = [...new Set(data.map(p => p.category))].filter(Boolean);
+
+                // Sort based on CATEGORY_ORDER
+                const sortedCats = uniqueCats.sort((a, b) => {
+                    const idxA = CATEGORY_ORDER.indexOf(a);
+                    const idxB = CATEGORY_ORDER.indexOf(b);
+                    // If both in list, sort by index
+                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                    // If only A in list, A first
+                    if (idxA !== -1) return -1;
+                    // If only B in list, B first
+                    if (idxB !== -1) return 1;
+                    return a.localeCompare(b);
+                });
+
+                setCategories(sortedCats);
+                if (sortedCats.length > 0) setSelectedCategory(sortedCats[0]);
 
             } catch (error) {
                 console.error("Failed to load menu", error);
@@ -325,7 +341,7 @@ const Menu = () => {
                                 onClick={() => updateCart(item, 1)}
                                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0, cursor: 'pointer' }}
                             >
-                                <div style={{ flex: 1 }}>
+                                <div style={{ flex: 1, width: '100%' }}>
                                     <h4 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{item.name}</h4>
                                     {item.description && (
                                         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>

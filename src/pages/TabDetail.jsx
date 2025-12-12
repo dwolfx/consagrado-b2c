@@ -3,10 +3,12 @@ import { ArrowLeft, Users, AlertCircle, CreditCard, Bell } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useTablePresence } from '../hooks/useTablePresence';
 
 const TabDetail = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { onlineUsers } = useTablePresence();
     const [loading, setLoading] = useState(true);
     const [orders, setOrders] = useState([]);
     const [establishment, setEstablishment] = useState(null);
@@ -38,19 +40,39 @@ const TabDetail = () => {
         loadTab();
     }, [navigate]);
 
-    // Filter my orders
-    // Logic: If user is logged in, match by name. If 'guest', match by 'Eu' maybe? 
-    // For now, simpler: verify if orderedBy contains name or is 'Eu' (if guest ordered as Eu)
-    // Actually, Menu sends: user?.name || 'Eu' (if explicit guest) or 'Cliente'.
-    const myName = user?.name || 'Eu';
+    // Name Resolution Helper
+    const resolveName = (id) => {
+        if (!id) return 'Desconhecido';
+        if (id === user?.id) return 'Você';
 
-    // Filter out internal notification items (e.g. Call Waiter)
-    const visibleOrders = orders.filter(o => o.name !== '🔔 CHAMAR GARÇOM');
+        // Check online users list (which caches DB users too)
+        const found = onlineUsers.find(u => u.id === id);
+        if (found) return found.name;
 
-    const myOrders = visibleOrders.filter(o => o.ordered_by === myName);
-    const myTotal = myOrders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+        // Fallback for Demo IDs (if not in online list for some reason)
+        if (id === '22222222-2222-2222-2222-222222222222') return 'Amiga da Demo';
+        if (id === '00000000-0000-0000-0000-000000000000') return 'Demo User';
 
-    const totalTab = visibleOrders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+        // Check if ID looks like UUID, if not, it might be a name (legacy/guest)
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}/.test(id)) return id;
+
+        return 'Cliente';
+    };
+
+    // Filter out internal notification items AND paid items (as requested only unpaid active items)
+    const visibleOrders = orders.filter(o => o.name !== '🔔 CHAMAR GARÇOM' && o.status !== 'paid');
+
+    const myOrders = visibleOrders.filter(o => o.ordered_by === user?.id);
+
+    // Calculate My Share
+    const mySubtotal = myOrders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const myServiceFee = mySubtotal * 0.10; // 10%
+    const myTotal = mySubtotal + myServiceFee;
+
+    // Calculate Table Total (Active)
+    const totalTabSub = visibleOrders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const totalTabFee = totalTabSub * 0.10;
+    const totalTab = totalTabSub + totalTabFee;
 
     const formatPrice = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -58,6 +80,7 @@ const TabDetail = () => {
 
     return (
         <div className="container" style={{ paddingBottom: '100px' }}>
+            {/* Header Updated */}
             <header style={{ padding: '1rem 0', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
                 <button onClick={() => navigate(-1)} className="btn-ghost" style={{ width: 'auto', padding: 0 }}>
                     <ArrowLeft />
@@ -66,33 +89,26 @@ const TabDetail = () => {
                     <h2 style={{ fontSize: '1.25rem' }}>{establishment?.name || 'Restaurante'}</h2>
                     <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Mesa {tableNumber || '?'}</span>
                 </div>
-                <button className="btn-ghost" style={{ marginLeft: 'auto', color: 'var(--warning)' }}>
-                    <Bell />
-                </button>
             </header>
 
-            {/* My Summary */}
-            <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--primary)', color: 'white' }}>
-                <div>
-                    <span style={{ fontSize: '0.9rem', opacity: 0.9 }}>Sua parte</span>
-                    <h1 style={{ fontSize: '2rem' }}>{formatPrice(myTotal)}</h1>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>Total Mesa</span>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>{formatPrice(totalTab)}</div>
-                </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: '1rem', marginTop: '0.5rem' }}>
+                <h3 style={{ margin: 0 }}>Consumo da Mesa</h3>
+                <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    Total: <strong>{formatPrice(totalTab)}</strong>
+                </span>
             </div>
 
-            <h3 style={{ marginBottom: '1rem', marginTop: '1rem' }}>Consumo da Mesa</h3>
-
-            <div style={{ display: 'grid', gap: '1rem' }}>
+            {/* Items List */}
+            <div style={{ display: 'grid', gap: '1rem', marginBottom: '6rem' }}>
                 {visibleOrders.length === 0 ? (
                     <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
                         Nenhum pedido ainda.
                     </div>
                 ) : (
                     visibleOrders.map(item => {
-                        const isMine = item.ordered_by === myName;
+                        const isMine = item.ordered_by === user?.id; // Correct ID Check
+                        const displayName = isMine ? 'Você' : resolveName(item.ordered_by);
+
                         return (
                             <div key={item.id} className="card" style={{ marginBottom: 0, borderLeft: isMine ? '4px solid var(--primary)' : 'none' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
@@ -105,9 +121,16 @@ const TabDetail = () => {
                                         color: isMine ? 'var(--primary)' : 'var(--text-secondary)',
                                         fontWeight: isMine ? 'bold' : 'normal'
                                     }}>
-                                        {isMine ? 'Você' : item.ordered_by}
+                                        {displayName}
                                     </span>
-                                    {item.status !== 'pending' && <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', backgroundColor: 'var(--bg-tertiary)' }}>{item.status}</span>}
+                                    <span style={{
+                                        fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px',
+                                        backgroundColor: item.status === 'paid' ? '#dcfce7' : 'var(--bg-tertiary)',
+                                        color: item.status === 'paid' ? '#166534' : 'var(--text-secondary)',
+                                        fontWeight: '600', textTransform: 'uppercase'
+                                    }}>
+                                        {item.status === 'paid' ? 'Pago' : (item.status === 'pending' ? 'Enviado' : item.status)}
+                                    </span>
                                 </div>
                             </div>
                         );
@@ -115,26 +138,29 @@ const TabDetail = () => {
                 )}
             </div>
 
+            {/* Card Removed as requested */}
+
+
             <footer style={{
                 position: 'fixed', bottom: 0, left: 0, right: 0,
                 padding: '1rem', backgroundColor: 'var(--bg-secondary)', borderTop: '1px solid var(--bg-tertiary)',
-                display: 'flex', gap: '1rem', justifyContent: 'center'
+                display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center'
             }}>
                 <button
                     onClick={() => alert("Garçom chamado!")}
                     className="btn btn-secondary"
-                    style={{ width: 'auto', flex: 1 }}
+                    style={{ width: 'auto', padding: '0.75rem', fontSize: '0.8rem' }}
                 >
-                    <Bell size={20} />
-                    Garçom
+                    <Bell size={18} />
+                    Ajuda
                 </button>
                 <button
                     onClick={() => navigate('/payment')}
                     className="btn btn-primary"
-                    style={{ flex: 2 }}
+                    style={{ flex: 1, flexDirection: 'column', gap: '0', alignItems: 'center', padding: '0.5rem' }}
                 >
-                    <CreditCard size={20} />
-                    Pagar Conta
+                    <span style={{ fontSize: '0.75rem', fontWeight: 'normal', opacity: 0.9 }}>Pagar sua parte</span>
+                    <span style={{ fontSize: '1rem', fontWeight: 'bold' }}>{formatPrice(mySubtotal)} + taxas</span>
                 </button>
             </footer>
         </div>
