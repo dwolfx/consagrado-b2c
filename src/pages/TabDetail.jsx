@@ -60,13 +60,18 @@ const TabDetail = () => {
     };
 
     // Filter out internal notification items AND paid items (as requested only unpaid active items)
-    const visibleOrders = orders.filter(o => o.name !== '🔔 CHAMAR GARÇOM' && o.status !== 'paid');
+    // Also filtering out faulty zero-price items from demo data
+    const visibleOrders = orders.filter(o =>
+        o.name !== '🔔 CHAMAR GARÇOM' &&
+        o.status !== 'paid' &&
+        o.price > 0
+    );
 
     const myOrders = visibleOrders.filter(o => o.ordered_by === user?.id);
 
     // Calculate My Share
     const mySubtotal = myOrders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-    const myServiceFee = mySubtotal * 0.10; // 10%
+    const myServiceFee = mySubtotal > 0 ? mySubtotal * 0.10 : 0; // Explicit check for clarity
     const myTotal = mySubtotal + myServiceFee;
 
     // Calculate Table Total (Active)
