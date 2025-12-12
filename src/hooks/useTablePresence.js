@@ -14,10 +14,13 @@ export const useTablePresence = () => {
 
         // --- 1. DB Presence (Users with Active Orders) ---
         const fetchActiveUsers = async () => {
+            const currentTableId = localStorage.getItem('my_table_id');
+            if (!currentTableId) return;
+
             const { data: orders } = await supabase
                 .from('orders')
                 .select('ordered_by')
-                .eq('table_id', tableId)
+                .eq('table_id', currentTableId)
                 .neq('status', 'paid')
                 .neq('name', '🔔 CHAMAR GARÇOM'); // Ignore notifications
 
@@ -26,8 +29,10 @@ export const useTablePresence = () => {
             const rawIds = [...new Set(orders.map(o => o.ordered_by))];
             const dbUsers = [];
 
-            const uuids = rawIds.filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}/.test(id));
-            const names = rawIds.filter(id => !/^[0-9a-f]{8}-[0-9a-f]{4}/.test(id));
+            // Robust UUID check
+            const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+            const uuids = rawIds.filter(id => uuidPattern.test(id));
+            const names = rawIds.filter(id => !uuidPattern.test(id));
 
             if (uuids.length > 0) {
                 const { data: profiles } = await supabase.from('users').select('*').in('id', uuids);

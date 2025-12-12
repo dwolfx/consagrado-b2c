@@ -24,26 +24,49 @@ export const AuthProvider = ({ children }) => {
             // ---------------------------------------------------------
             // 1. DEMO BYPASS
             // ---------------------------------------------------------
-            if (email === 'demo@demo' && password === 'demo') {
-                const demoUser = {
-                    id: '00000000-0000-0000-0000-000000000000',
-                    name: 'Demo User',
-                    email: 'demo@demo',
-                    role: 'customer',
-                    avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=demo&backgroundColor=b6e3f4'
-                };
+            // ---------------------------------------------------------
+            // 1. DEMO BYPASS (Universal for Sales Pitch)
+            // ---------------------------------------------------------
+            if (password === 'demo') {
+                let targetDemoUser = null;
 
-                // Try to find if demo user exists in DB to use real data
-                const { data } = await supabase.from('users').select('*').eq('email', 'demo@demo').single();
-                if (data) {
-                    setUser(data);
-                    localStorage.setItem('garcom_user', JSON.stringify(data));
-                    return true;
+                // Main User
+                if (email === 'demo@demo' || email === 'demo@demo.com') {
+                    targetDemoUser = {
+                        id: '00000000-0000-0000-0000-000000000000',
+                        name: 'Demo User',
+                        email: 'demo@demo',
+                        role: 'customer',
+                        avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=demo&backgroundColor=b6e3f4'
+                    };
+                }
+                // Friend User (Amiga)
+                else if (email === 'amigo@demo' || email === 'amigo@demo.com') {
+                    targetDemoUser = {
+                        id: '22222222-2222-2222-2222-222222222222',
+                        name: 'Amiga da Demo',
+                        email: 'amigo@demo.com',
+                        role: 'customer',
+                        avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=Amiga&backgroundColor=ffdfbf'
+                    };
                 }
 
-                setUser(demoUser);
-                localStorage.setItem('garcom_user', JSON.stringify(demoUser));
-                return true;
+                if (targetDemoUser) {
+                    // Try to find if user really exists in DB to use their REAL data (e.g. if they changed avatar)
+                    // We use the ID to check because Email might vary in DB vs Bypass
+                    const { data } = await supabase.from('users').select('*').eq('id', targetDemoUser.id).single();
+
+                    if (data) {
+                        setUser(data);
+                        localStorage.setItem('garcom_user', JSON.stringify(data));
+                        return true;
+                    }
+
+                    // Fallback to memory object
+                    setUser(targetDemoUser);
+                    localStorage.setItem('garcom_user', JSON.stringify(targetDemoUser));
+                    return true;
+                }
             }
 
             // ---------------------------------------------------------
