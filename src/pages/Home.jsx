@@ -22,12 +22,12 @@ const Home = () => {
             try {
                 // Check Tab
                 const storedTableId = localStorage.getItem('my_table_id');
-                setTableId(storedTableId);
-                setHasTab(!!storedTableId);
 
-                // Fetch Establishment Context
-                // Fetch Establishment Context
                 if (storedTableId) {
+                    setTableId(storedTableId);
+                    setHasTab(true);
+
+                    // Fetch Establishment Context
                     const tableData = await api.getTable(storedTableId);
                     if (tableData && tableData.establishment) {
                         setEstablishment(tableData.establishment);
@@ -36,16 +36,22 @@ const Home = () => {
                         document.documentElement.style.setProperty('--brand-color', brandColor);
                     }
                     // Check for active orders (Simulated)
-                    // In real app, check api.getOrders status
                     setActiveOrders(true);
                 } else {
                     // DEMO FALLBACK: Fetch Default Establishment (ID 1)
-                    // Check if user is logged in (even demo user) and apply basic branding
                     const estabData = await api.getEstablishment(1);
                     if (estabData) {
                         setEstablishment(estabData);
                         const brandColor = estabData.theme_color || '#f59e0b';
                         document.documentElement.style.setProperty('--brand-color', brandColor);
+                    }
+
+                    // FORCE DEMO USER TO TABLE 1
+                    if (user?.email === 'demo@demo') {
+                        setTableId('1');
+                        setHasTab(true);
+                        setActiveOrders(true);
+                        localStorage.setItem('my_table_id', '1');
                     }
                 }
             } catch (e) {
@@ -54,8 +60,9 @@ const Home = () => {
                 setLoading(false);
             }
         };
-        init();
-    }, []);
+
+        if (user !== undefined) init();
+    }, [user]);
 
     const userFirstName = user?.name?.split(' ')[0] || 'Visitante';
 
@@ -68,50 +75,37 @@ const Home = () => {
 
     return (
         <div className="container fade-in">
-            {/* Header: User & Context */}
+            {/* Header: User & Logout */}
             <header style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'start',
-                marginBottom: '2rem', paddingTop: '1rem'
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                marginBottom: '0.5rem', paddingTop: '1rem'
             }}>
                 <div onClick={() => navigate('/profile')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    {user?.avatar && (
+                    {user?.avatar ? (
                         <img
                             src={user?.avatar}
                             alt="Avatar"
                             style={{
-                                width: '50px', height: '50px', borderRadius: '50%',
-                                border: '2px solid var(--brand-color)',
-                                backgroundColor: 'var(--bg-secondary)',
+                                width: '40px', height: '40px', borderRadius: '50%',
+                                border: '2px solid var(--bg-tertiary)',
                                 objectFit: 'cover'
                             }}
                         />
+                    ) : (
+                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--bg-tertiary)' }} />
                     )}
-                    <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <h1 style={{ fontSize: '1.4rem', margin: 0, lineHeight: '1.2' }}>Olá, {userFirstName}</h1>
-                            <ChevronRight size={18} color="var(--text-secondary)" />
-                        </div>
-                        {hasTab && establishment ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>
-                                <MapPin size={12} />
-                                <span>Mesa {tableId} · <strong>{establishment.name}</strong></span>
-                            </div>
-                        ) : (
-                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>
-                                Bem-vindo ao Consagrado
-                            </div>
-                        )}
-                    </div>
+                    <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{userFirstName}</span>
                 </div>
+
                 <button
                     onClick={logout}
                     style={{
-                        width: '40px', height: '40px', borderRadius: '50%', background: 'var(--bg-secondary)',
-                        border: '1px solid var(--bg-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        cursor: 'pointer', color: 'var(--text-primary)' /* White text for contrast */
+                        width: '40px', height: '40px', borderRadius: '50%', background: 'transparent',
+                        border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', color: 'var(--text-secondary)'
                     }}
                 >
-                    <LogOut size={18} />
+                    <LogOut size={20} />
                 </button>
             </header>
 
@@ -120,52 +114,38 @@ const Home = () => {
 
                 {hasTab ? (
                     <>
-                        {/* 1. FAZER PEDIDO - CTA Priority */}
+                        {/* HERO: Establishment Context */}
+                        <div style={{ padding: '0.5rem 0 1.5rem', textAlign: 'center' }}>
+                            <h3 style={{ fontSize: '1rem', fontWeight: 500, margin: '0 0 0.25rem 0', color: 'var(--text-secondary)' }}>
+                                Seja bem-vindo ao
+                            </h3>
+                            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>
+                                {establishment?.name || 'Consagrado'}
+                            </h2>
+                            <span style={{
+                                background: 'var(--bg-tertiary)', padding: '6px 16px', borderRadius: '100px',
+                                fontSize: '0.95rem', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 500
+                            }}>
+                                <MapPin size={16} /> Mesa {tableId}
+                            </span>
+                        </div>
+
+                        {/* 1. CARDÁPIO (Fazer Pedido) */}
                         <button
                             onClick={() => navigate('/menu')}
                             className="btn btn-primary"
                             style={{
-                                padding: '1.5rem', justifyContent: 'space-between',
+                                padding: '1.5rem', justifyContent: 'center',
                                 boxShadow: '0 8px 20px -4px rgba(0,0,0,0.3)',
-                                position: 'relative', overflow: 'hidden'
+                                fontSize: '1.4rem', fontWeight: 800, gap: '12px',
+                                textTransform: 'uppercase', letterSpacing: '1px'
                             }}
                         >
-                            <div style={{ textAlign: 'left', zIndex: 1 }}>
-                                <div style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '4px' }}>Fazer Pedido</div>
-                                <div style={{ fontSize: '0.95rem', opacity: 0.9, fontWeight: 400 }}>Sem esperar o garçom</div>
-                            </div>
-                            <div style={{
-                                background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '50%',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            }}>
-                                <Utensils size={24} />
-                            </div>
+                            <Utensils size={28} strokeWidth={2.5} />
+                            Fazer Pedido
                         </button>
 
-                        {/* 2. MINHA COMANDA - Anxiety Reduction */}
-                        <button
-                            onClick={() => navigate('/tab')}
-                            className="card"
-                            style={{
-                                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                                cursor: 'pointer', borderLeft: '4px solid var(--brand-color)', padding: '1.25rem'
-                            }}
-                        >
-                            <div style={{ textAlign: 'left' }}>
-                                <div style={{ fontWeight: 600, fontSize: '1.1rem', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    Minha Comanda
-                                    {activeOrders && (
-                                        <span className="status-badge" style={{ fontSize: '0.7rem', padding: '2px 6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                            <Clock size={10} /> Em preparo
-                                        </span>
-                                    )}
-                                </div>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Ver itens e valor parcial</div>
-                            </div>
-                            <Receipt size={22} style={{ color: 'var(--text-secondary)' }} />
-                        </button>
-
-                        {/* 3. CHAMAR GARÇOM - Support */}
+                        {/* 2. CHAMAR GARÇOM (Warning/Red) */}
                         <button
                             onClick={async () => {
                                 if (window.confirm('Chamar atendimento na mesa?')) {
@@ -173,35 +153,56 @@ const Home = () => {
                                     alert('Chamado enviado!');
                                 }
                             }}
-                            className="card"
+                            className="btn"
                             style={{
-                                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: '10px',
-                                cursor: 'pointer', background: 'transparent', border: '1px solid var(--bg-tertiary)',
-                                color: 'var(--text-secondary)', padding: '1rem'
+                                background: '#ef4444', color: 'white', border: 'none',
+                                padding: '1.25rem', justifyContent: 'center',
+                                fontSize: '1.2rem', fontWeight: 700, gap: '10px',
+                                textTransform: 'uppercase'
                             }}
                         >
-                            <Bell size={18} />
-                            <span style={{ fontWeight: 500 }}>Chamar Garçom</span>
-                            <span style={{ fontSize: '0.8rem', opacity: 0.6, fontWeight: 400 }}>• Atendimento mais rápido</span>
+                            <Bell size={24} />
+                            Chamar Garçom
                         </button>
 
-                        {/* Extras: History & Promos */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
-                            <button onClick={() => navigate('/history')} className="card" style={{
-                                alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', padding: '1rem'
-                            }}>
-                                <History size={20} style={{ color: 'var(--text-secondary)' }} />
-                                <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-                                    <span style={{ fontWeight: '600', fontSize: '1.1rem' }}>Histórico de Consumo</span>
-                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>O que você já consumiu</span>
+                        {/* 3. Comanda & Pagamento */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+                            <button
+                                onClick={() => navigate('/tab')}
+                                className="card"
+                                style={{
+                                    flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center',
+                                    padding: '1.25rem', marginBottom: 0, gap: '4px', borderLeft: '4px solid var(--brand-color)',
+                                    position: 'relative', overflow: 'hidden'
+                                }}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 600 }}>Minha Conta</span>
+                                    <Receipt size={20} style={{ opacity: 0.3 }} />
                                 </div>
+
+                                {activeOrders && (
+                                    <span style={{
+                                        fontSize: '0.65rem', background: '#dcfce7', color: '#166534',
+                                        padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold',
+                                        textTransform: 'uppercase', marginTop: '4px'
+                                    }}>
+                                        Em Preparo
+                                    </span>
+                                )}
                             </button>
-                            <div className="card" style={{
-                                alignItems: 'center', justifyContent: 'center', gap: '8px', opacity: 0.5, padding: '1rem'
-                            }}>
-                                <span style={{ fontSize: '1.2rem' }}>💎</span>
-                                <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', fontWeight: 500 }}>Fidelidade</span>
-                            </div>
+
+                            <button
+                                onClick={() => navigate('/payment')}
+                                className="card"
+                                style={{
+                                    alignItems: 'center', justifyContent: 'center', gap: '8px',
+                                    padding: '1.25rem', marginBottom: 0, background: 'var(--bg-tertiary)'
+                                }}
+                            >
+                                <span style={{ fontSize: '1.5rem' }}>💸</span>
+                                <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Pagar</span>
+                            </button>
                         </div>
 
                     </>

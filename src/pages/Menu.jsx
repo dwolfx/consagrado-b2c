@@ -33,6 +33,7 @@ const Menu = () => {
     const [categories, setCategories] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
     const [targetUser, setTargetUser] = useState(user || { id: 'guest', name: 'Você' }); // Default to current user
     const { onlineUsers } = useTablePresence();
 
@@ -48,18 +49,16 @@ const Menu = () => {
 
     useEffect(() => {
         const load = async () => {
+            // ... existing logic ...
             const tableId = localStorage.getItem('my_table_id');
 
             if (!tableId) {
-                // FALLBACK DEMO: Fetch Establishment 1 Name
                 try {
                     const estab = await api.getEstablishment(1);
                     if (estab) setEstablishmentName(estab.name);
                 } catch (e) { console.error(e); }
             } else {
-                // Existing Table Logic
                 try {
-                    // Fetch Table Details to get Establishment Name
                     const tableData = await api.getTable(tableId);
                     if (tableData && tableData.establishment) {
                         setEstablishmentName(tableData.establishment.name);
@@ -86,16 +85,12 @@ const Menu = () => {
         load();
     }, []);
 
-    const tableId = localStorage.getItem('my_table_id');
-
-    // const tableId defined inside load() and at component level. 
-    // Cleaning up logic.
-    // The component logic relies on `tableId` constant declared at line 91 (in original file, 91 was correct).
-    // But wait, line 91 and 93 both declare it.
-    // Let's just remove the duplicate lines 93-94 entirely.
-
-
-    const filteredItems = products.filter(item => item.category === selectedCategory);
+    const filteredItems = products.filter(item => {
+        if (searchTerm.trim()) {
+            return item.name.toLowerCase().includes(searchTerm.toLowerCase());
+        }
+        return item.category === selectedCategory;
+    });
 
     const updateCart = (item, delta) => {
         setCart(prev => {
@@ -197,6 +192,8 @@ const Menu = () => {
                         placeholder={establishmentName ? `Buscar em ${establishmentName}...` : "Buscar..."}
                         className="input-field"
                         style={{ paddingLeft: '2.5rem', marginBottom: 0, height: '40px' }}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                 </div>
@@ -274,44 +271,46 @@ const Menu = () => {
             )}
 
             {/* Categories */}
-            <div style={{
-                display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem',
-                marginBottom: '1rem', scrollbarWidth: 'none'
-            }}>
-                {categories.map(cat => {
-                    const Icon = CATEGORY_ICONS[cat] || ShoppingBag;
-                    const isSelected = selectedCategory === cat;
-                    return (
-                        <button
-                            key={cat}
-                            onClick={() => setSelectedCategory(cat)}
-                            style={{
-                                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
-                                minWidth: '80px', opacity: isSelected ? 1 : 0.6,
-                                background: 'none', border: 'none', cursor: 'pointer', outline: 'none'
-                            }}
-                        >
-                            <div style={{
-                                width: '60px', height: '60px', borderRadius: '16px', overflow: 'hidden',
-                                border: isSelected ? '2px solid var(--primary)' : '2px solid transparent',
-                                backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.2)' : 'var(--bg-tertiary)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                transition: 'all 0.2s ease'
-                            }}>
-                                <Icon size={24} color={isSelected ? 'var(--primary)' : 'var(--text-secondary)'} />
-                            </div>
-                            <span style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', color: isSelected ? 'white' : 'var(--text-secondary)' }}>
-                                {cat}
-                            </span>
-                        </button>
-                    );
-                })}
-            </div>
+            {!searchTerm && (
+                <div style={{
+                    display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem',
+                    marginBottom: '1rem', scrollbarWidth: 'none'
+                }}>
+                    {categories.map(cat => {
+                        const Icon = CATEGORY_ICONS[cat] || ShoppingBag;
+                        const isSelected = selectedCategory === cat;
+                        return (
+                            <button
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                style={{
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+                                    minWidth: '80px', opacity: isSelected ? 1 : 0.6,
+                                    background: 'none', border: 'none', cursor: 'pointer', outline: 'none'
+                                }}
+                            >
+                                <div style={{
+                                    width: '60px', height: '60px', borderRadius: '16px', overflow: 'hidden',
+                                    border: isSelected ? '2px solid var(--primary)' : '2px solid transparent',
+                                    backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.2)' : 'var(--bg-tertiary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    transition: 'all 0.2s ease'
+                                }}>
+                                    <Icon size={24} color={isSelected ? 'var(--primary)' : 'var(--text-secondary)'} />
+                                </div>
+                                <span style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', color: isSelected ? 'white' : 'var(--text-secondary)' }}>
+                                    {cat}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Items */}
             <div>
                 <h3 style={{ marginBottom: '1rem', textTransform: 'capitalize' }}>
-                    {selectedCategory}
+                    {searchTerm ? `Resultados para "${searchTerm}"` : selectedCategory}
                 </h3>
 
                 <div style={{ display: 'grid', gap: '1rem' }}>
