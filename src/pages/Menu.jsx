@@ -206,7 +206,7 @@ const Menu = () => {
                             name: product.name,
                             price: product.price,
                             quantity: qty,
-                            orderedBy: ordererName
+                            orderedBy: userId
                         }));
                     }
                 });
