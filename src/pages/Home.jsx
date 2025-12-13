@@ -39,6 +39,15 @@ const Home = () => {
                         // Inject Brand Color if available, else default Gold
                         const brandColor = tableData.establishment.theme_color || '#f59e0b';
                         document.documentElement.style.setProperty('--brand-color', brandColor);
+
+                        // IMPÉRIO DEMO THEME (Red Background override)
+                        if (tableData.establishment.id === 1) {
+                            document.documentElement.style.setProperty('--bg-primary', '#450a0a'); // Red 950
+                            document.documentElement.style.setProperty('--bg-secondary', '#7f1d1d'); // Red 900
+                            document.documentElement.style.setProperty('--bg-tertiary', '#991b1b'); // Red 800
+                            document.documentElement.style.setProperty('--text-primary', '#fffFb1'); // Warm White
+                            document.documentElement.style.setProperty('--text-secondary', '#fca5a5'); // Red 300
+                        }
                     }
                     // Check for active orders (Simulated)
                     setActiveOrders(true);
@@ -49,6 +58,15 @@ const Home = () => {
                         setEstablishment(estabData);
                         const brandColor = estabData.theme_color || '#f59e0b';
                         document.documentElement.style.setProperty('--brand-color', brandColor);
+
+                        // IMPÉRIO DEMO THEME
+                        if (estabData.id === 1) {
+                            document.documentElement.style.setProperty('--bg-primary', '#450a0a');
+                            document.documentElement.style.setProperty('--bg-secondary', '#7f1d1d');
+                            document.documentElement.style.setProperty('--bg-tertiary', '#991b1b');
+                            document.documentElement.style.setProperty('--text-primary', '#fffFb1');
+                            document.documentElement.style.setProperty('--text-secondary', '#fca5a5');
+                        }
                     }
 
                     // FORCE DEMO USER TO TABLE 1
