@@ -151,14 +151,14 @@ export const api = {
 
         const orders = [
             // Water
-            { table_id: tableId, product_id: 102, quantity: 1, status: 'delivered', ordered_by: '22222222-2222-2222-2222-222222222222', name: 'Água com Gás', price: 4.50, created_at: past30 },
-            { table_id: tableId, product_id: 102, quantity: 1, status: 'delivered', ordered_by: '00000000-0000-0000-0000-000000000000', name: 'Água com Gás', price: 4.50, created_at: past30 },
+            { table_id: tableId, product_id: 102, quantity: 1, status: 'delivered', ordered_by: 'cf02de19-9b72-45f8-a09f-7199ffcd721a', name: 'Água com Gás', price: 4.50, created_at: past30 },
+            { table_id: tableId, product_id: 102, quantity: 1, status: 'delivered', ordered_by: '68df0acb-07a2-4048-a61e-d538ff3ff442', name: 'Água com Gás', price: 4.50, created_at: past30 },
             // Wine (Split)
-            { table_id: tableId, product_id: 103, quantity: 1, status: 'delivered', ordered_by: '00000000-0000-0000-0000-000000000000', name: '1/2 Vinho Malbec', price: 50.00, created_at: past25 },
-            { table_id: tableId, product_id: 103, quantity: 1, status: 'delivered', ordered_by: '22222222-2222-2222-2222-222222222222', name: '1/2 Vinho Malbec', price: 50.00, created_at: past25 },
+            { table_id: tableId, product_id: 103, quantity: 1, status: 'delivered', ordered_by: '68df0acb-07a2-4048-a61e-d538ff3ff442', name: '1/2 Vinho Malbec', price: 50.00, created_at: past25 },
+            { table_id: tableId, product_id: 103, quantity: 1, status: 'delivered', ordered_by: 'cf02de19-9b72-45f8-a09f-7199ffcd721a', name: '1/2 Vinho Malbec', price: 50.00, created_at: past25 },
             // Pizza (Split)
-            { table_id: tableId, product_id: 101, quantity: 1, status: 'delivered', ordered_by: '00000000-0000-0000-0000-000000000000', name: '1/2 Pizza Margherita', price: 22.50, created_at: past15 },
-            { table_id: tableId, product_id: 101, quantity: 1, status: 'delivered', ordered_by: '22222222-2222-2222-2222-222222222222', name: '1/2 Pizza Margherita', price: 22.50, created_at: past15 }
+            { table_id: tableId, product_id: 101, quantity: 1, status: 'delivered', ordered_by: '68df0acb-07a2-4048-a61e-d538ff3ff442', name: '1/2 Pizza Margherita', price: 22.50, created_at: past15 },
+            { table_id: tableId, product_id: 101, quantity: 1, status: 'delivered', ordered_by: 'cf02de19-9b72-45f8-a09f-7199ffcd721a', name: '1/2 Pizza Margherita', price: 22.50, created_at: past15 }
         ];
 
         const { error } = await supabase.from('orders').insert(orders);

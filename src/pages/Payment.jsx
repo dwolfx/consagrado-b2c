@@ -32,10 +32,15 @@ const Payment = () => {
                 const tableData = await api.getTable(tableId);
                 const orders = tableData?.orders || [];
 
-                // Filter my orders
-                const myName = user?.name || 'Eu';
-                // Also include 'Eu' just in case of local offline dev
-                const myOrders = orders.filter(o => o.ordered_by === myName || (user?.name && o.ordered_by === 'Eu') || (!user && o.ordered_by === 'Cliente'));
+                // Filter my orders (Using UUID now!)
+                const myId = user?.id;
+                const myOrders = orders.filter(o =>
+                    o.ordered_by === myId ||                // Match UUID
+                    o.ordered_by === myId // Redundant check removed, strict UUID match
+                );
+
+                // Fallback for demo specific names if UUID fails or old data
+                // const myOrders = orders.filter(o => o.ordered_by === myId); 
 
                 const myTotal = myOrders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
                 setSubtotal(myTotal);
@@ -74,6 +79,11 @@ const Payment = () => {
         await new Promise(r => setTimeout(r, 1500));
 
         // Clear from Database (User Req: "Limpe tudo da mesa")
+        /* 
+           NOTE: In a real app, we wouldn't delete orders, just mark as 'paid'. 
+           But for this Demo flow, user asked to "Close/Clear" the table.
+           However, if we clear BEFORE showing Receipt, it's fine.
+        */
         const tableId = localStorage.getItem('my_table_id');
         if (tableId) {
             await api.clearTableOrders(tableId);
@@ -86,16 +96,61 @@ const Payment = () => {
     };
 
     if (success) {
+        // Generate a random hash for the receipt
+        const receiptHash = Math.random().toString(36).substring(2, 10).toUpperCase();
+
         return (
-            <div className="container" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-                <CheckCircle size={80} color="var(--success)" style={{ marginBottom: '1rem' }} />
-                <h1>Pago com Sucesso!</h1>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-                    Você já pode sair. A comanda foi encerrada.
-                </p>
-                <button onClick={() => navigate('/')} className="btn btn-secondary">
-                    Voltar ao Início
-                </button>
+            <div className="container" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
+                <div style={{
+                    background: 'var(--bg-secondary)', padding: '2rem', borderRadius: '24px',
+                    width: '100%', maxWidth: '400px', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem',
+                    animation: 'scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                }}>
+                    <div style={{ background: 'rgba(34, 197, 94, 0.2)', padding: '1rem', borderRadius: '50%' }}>
+                        <CheckCircle size={48} color="#22c55e" />
+                    </div>
+
+                    <h1 style={{ fontSize: '1.5rem', margin: 0 }}>Pagamento Confirmado!</h1>
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                        Apresente este código na saída se solicitado.
+                    </p>
+
+                    {/* FAKE QR CODE FOR DEMO */}
+                    <div style={{
+                        background: 'white', padding: '1rem', borderRadius: '12px',
+                        margin: '1rem 0', width: '200px', height: '200px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=IMP-${receiptHash}`}
+                            alt="QR Code"
+                            style={{ width: '100%', height: '100%' }}
+                        />
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <span style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: 'var(--text-tertiary)' }}>Código de Saída</span>
+                        <div style={{
+                            background: 'var(--bg-tertiary)', padding: '0.5rem 1.5rem',
+                            borderRadius: '8px', fontFamily: 'monospace', fontSize: '1.4rem',
+                            letterSpacing: '2px', fontWeight: 'bold', color: 'var(--primary)'
+                        }}>
+                            #{receiptHash}
+                        </div>
+                    </div>
+
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>
+                        Mesa encerrada. Obrigado pela preferência!
+                    </p>
+
+                    <button onClick={() => navigate('/')} className="btn btn-primary" style={{ marginTop: '1rem', width: '100%' }}>
+                        Voltar ao Início
+                    </button>
+                </div>
+                <style>{`
+                    @keyframes scaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+                `}</style>
             </div>
         );
     }
