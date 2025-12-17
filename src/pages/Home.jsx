@@ -145,7 +145,7 @@ const Home = () => {
                             }}
                         >
                             <Utensils size={28} strokeWidth={2.5} />
-                            Fazer Pedido
+                            Fazer PedidoO
                         </button>
 
                         {/* 2. CHAMAR GARÇOM (Warning/Red) */}
