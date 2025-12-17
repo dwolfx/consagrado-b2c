@@ -265,6 +265,12 @@ const Home = () => {
                                     <Camera size={20} /> Ler QR Code
                                 </button>
 
+                                <div style={{ display: 'flex', alignItems: 'center', margin: '0.5rem 0', opacity: 0.5 }}>
+                                    <div style={{ flex: 1, height: '1px', background: 'var(--text-secondary)' }}></div>
+                                    <span style={{ padding: '0 10px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>OU</span>
+                                    <div style={{ flex: 1, height: '1px', background: 'var(--text-secondary)' }}></div>
+                                </div>
+
                                 {/* Manual Code Section */}
                                 <div style={{ width: '100%' }}>
                                     {!showManualInput ? (
@@ -301,16 +307,16 @@ const Home = () => {
                                                     }}
                                                     className="btn"
                                                     style={{
-                                                        padding: '0 1rem', background: 'var(--bg-tertiary)',
-                                                        color: 'var(--text-secondary)'
+                                                        padding: '0 1rem', background: '#ff0000',
+                                                        width: '50px', color: '#ffffff'
                                                     }}
                                                 >
-                                                    <X size={20} />
+                                                    <X size={15} />
                                                 </button>
                                             </div>
                                             <button
                                                 onClick={handleManualSubmit}
-                                                className="btn btn-primary"
+                                                className="btn btn-tertiary"
                                                 disabled={!manualCode}
                                                 style={{ width: '100%', justifyContent: 'center', padding: '1rem' }}
                                             >
