@@ -128,8 +128,8 @@ const Scanner = () => {
                                 placeholder="Ex: AA0001"
                                 autoFocus
                                 style={{
-                                    padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.2)',
-                                    background: 'rgba(255,255,255,0.1)', color: 'white',
+                                    padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.4)',
+                                    background: 'rgba(0,0,0,0.6)', color: 'white',
                                     fontSize: '1.2rem', textTransform: 'uppercase', outline: 'none',
                                     textAlign: 'center', letterSpacing: '2px'
                                 }}

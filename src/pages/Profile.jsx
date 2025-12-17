@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Phone, Mail, Shield, LogOut, Trash2, Edit, Save as SaveIcon, X } from 'lucide-react';
+import { ArrowLeft, User, Phone, Mail, Shield, LogOut, Trash2, Edit, Save as SaveIcon, X, History, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
 import { supabase } from '../services/api';
@@ -158,6 +158,26 @@ const Profile = () => {
                 <h4 style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Dados Pessoais</h4>
                 <FieldEditor label="Celular" field="phone" icon={Phone} value={user?.phone} />
                 <FieldEditor label="E-mail" field="email" icon={Mail} value={user?.email} />
+            </div>
+
+            <div style={{ marginTop: '1rem' }}>
+                <button
+                    onClick={() => navigate('/history')}
+                    className="card"
+                    style={{
+                        width: '100%', flexDirection: 'row', alignItems: 'center', gap: '1rem',
+                        marginBottom: 0, padding: '1rem', cursor: 'pointer'
+                    }}
+                >
+                    <div style={{ padding: '8px', background: 'var(--bg-tertiary)', borderRadius: '50%' }}>
+                        <History size={20} color="var(--primary)" />
+                    </div>
+                    <div style={{ textAlign: 'left', flex: 1 }}>
+                        <div style={{ fontWeight: 600, fontSize: '1rem' }}>Meu Histórico</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Ver pedidos anteriores</div>
+                    </div>
+                    <ChevronRight size={20} color="var(--text-muted)" />
+                </button>
             </div>
 
             <div className="card" style={{ marginTop: '1rem' }}>

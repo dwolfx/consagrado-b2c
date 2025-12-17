@@ -139,6 +139,40 @@ export const api = {
         return !error;
     },
 
+    // Splitting
+    splitOrder: async (originalOrder, targetUserIds) => {
+        // 1. Delete original order
+        const { error: delError } = await supabase
+            .from('orders')
+            .delete()
+            .eq('id', originalOrder.id);
+
+        if (delError) {
+            console.error("Error deleting original for split", delError);
+            return false;
+        }
+
+        // 2. Create new fractional orders
+        const totalParts = targetUserIds.length;
+        const newPrice = originalOrder.price / totalParts;
+        const newName = `1/${totalParts} ${originalOrder.name.replace(/^\d+\/\d+\s/, '')}`; // Avoid "1/2 1/2 Pizza" recursion
+
+        const newOrders = targetUserIds.map(userId => ({
+            table_id: originalOrder.table_id,
+            product_id: originalOrder.product_id,
+            name: newName,
+            price: newPrice,
+            quantity: originalOrder.quantity, // Usually 1 for splits
+            status: originalOrder.status,
+            ordered_by: userId
+        }));
+
+        const { error: insError } = await supabase.from('orders').insert(newOrders);
+        if (insError) console.error("Error inserting split orders", insError);
+
+        return !insError;
+    },
+
     resetDemoData: async (tableId) => {
         // 1. Clear first
         await api.clearTableOrders(tableId);

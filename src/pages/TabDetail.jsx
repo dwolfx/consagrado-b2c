@@ -61,6 +61,42 @@ const TabDetail = () => {
 
     const [showAll, setShowAll] = useState(false);
 
+    // Split Logic
+    const [splitItem, setSplitItem] = useState(null);
+    const [selectedUsersToSplit, setSelectedUsersToSplit] = useState([]);
+
+    const handleItemClick = (item) => {
+        // Only allow splitting unpaid pending/delivered items
+        if (item.status === 'paid') return;
+        setSplitItem(item);
+        setSelectedUsersToSplit([]);
+    };
+
+    const toggleUserSelection = (uid) => {
+        if (selectedUsersToSplit.includes(uid)) {
+            setSelectedUsersToSplit(prev => prev.filter(id => id !== uid));
+        } else {
+            setSelectedUsersToSplit(prev => [...prev, uid]);
+        }
+    };
+
+    const executeSplit = async () => {
+        if (!splitItem || selectedUsersToSplit.length === 0) return;
+
+        // Target IDs includes ME + Selected Others
+        const targets = [user.id, ...selectedUsersToSplit];
+
+        const success = await api.splitOrder(splitItem, targets);
+        if (success) {
+            setSplitItem(null);
+            // Re-fetch handled by parent/effect or realtime reload? 
+            // In this architecture, realtime triggers should handle it, but we can force reload
+            window.location.reload();
+        } else {
+            alert('Erro ao dividir item.');
+        }
+    };
+
     // Filter out internal notification items AND paid items (as requested only unpaid active items)
     // Also filtering out faulty zero-price items from demo data
     const visibleOrders = orders.filter(o =>
@@ -124,7 +160,7 @@ const TabDetail = () => {
             <div style={{ display: 'grid', gap: '1rem', marginBottom: '6rem' }}>
 
                 {/* Meus Pedidos */}
-                <h4 style={{ margin: '0 0 0.5rem 0', opacity: 0.9 }}>Seus Pedidos</h4>
+                <h4 style={{ margin: '0 0 0.5rem 0', opacity: 0.9 }}>Seus Pedidos (Toque para dividir)</h4>
                 {myOrdersList.length === 0 ? (
                     <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: '12px' }}>
                         Você ainda não pediu nada.
@@ -133,7 +169,15 @@ const TabDetail = () => {
                     myOrdersList.map(item => {
                         const statusConfig = getStatusConfig(item.status);
                         return (
-                            <div key={item.id} className="card" style={{ marginBottom: 0, borderLeft: '4px solid var(--primary)' }}>
+                            <div
+                                key={item.id}
+                                onClick={() => handleItemClick(item)}
+                                className="card"
+                                style={{
+                                    marginBottom: 0, borderLeft: '4px solid var(--primary)', cursor: 'pointer',
+                                    position: 'relative'
+                                }}
+                            >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                                     <span style={{ fontWeight: '600', fontSize: '1rem' }}>{item.quantity}x {item.name}</span>
                                     <span style={{ fontWeight: '700' }}>{formatPrice(item.price * item.quantity)}</span>
@@ -154,11 +198,90 @@ const TabDetail = () => {
                                     }}>
                                         {statusConfig.label}
                                     </span>
+                                    <span style={{
+                                        marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-secondary)',
+                                        border: '1px solid var(--text-secondary)', padding: '2px 6px', borderRadius: '4px'
+                                    }}>
+                                        DIVIDIR
+                                    </span>
                                 </div>
                             </div>
                         );
                     })
                 )}
+
+                {/* SPLIT MODAL */}
+                {splitItem && (
+                    <div style={{
+                        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999,
+                        display: 'flex', alignItems: 'end', justifyContent: 'center'
+                    }} onClick={() => setSplitItem(null)}>
+                        <div
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                                background: 'var(--bg-secondary)', width: '100%', maxWidth: '500px',
+                                borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
+                                padding: '1.5rem', animation: 'slideUp 0.3s'
+                            }}
+                        >
+                            <h3 style={{ marginBottom: '0.5rem' }}>Dividir Item</h3>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                                Com quem você quer dividir <strong>{splitItem.name}</strong>?
+                            </p>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto' }}>
+                                {onlineUsers.filter(u => u.id !== user.id).map(u => {
+                                    const isSelected = selectedUsersToSplit.includes(u.id);
+                                    return (
+                                        <div
+                                            key={u.id}
+                                            onClick={() => toggleUserSelection(u.id)}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: '1rem',
+                                                padding: '1rem', borderRadius: '12px',
+                                                background: isSelected ? 'rgba(99, 102, 241, 0.2)' : 'var(--bg-tertiary)',
+                                                border: isSelected ? '1px solid var(--primary)' : '1px solid transparent',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <div style={{
+                                                width: '20px', height: '20px', borderRadius: '50%',
+                                                border: '2px solid var(--text-secondary)',
+                                                background: isSelected ? 'var(--primary)' : 'transparent',
+                                                borderColor: isSelected ? 'var(--primary)' : 'var(--text-secondary)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                            }}>
+                                                {isSelected && <div style={{ width: '8px', height: '8px', background: 'white', borderRadius: '50%' }} />}
+                                            </div>
+                                            <img
+                                                src={u.avatar_url}
+                                                style={{ width: '40px', height: '40px', borderRadius: '50%' }}
+                                            />
+                                            <span style={{ fontWeight: '500' }}>{u.name}</span>
+                                        </div>
+                                    );
+                                })}
+                                {onlineUsers.filter(u => u.id !== user.id).length === 0 && (
+                                    <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '1rem' }}>
+                                        Ninguém mais na mesa :(
+                                    </p>
+                                )}
+                            </div>
+
+                            <button
+                                onClick={executeSplit}
+                                disabled={selectedUsersToSplit.length === 0}
+                                className="btn btn-primary"
+                                style={{ marginTop: '1.5rem', width: '100%', padding: '1rem', opacity: selectedUsersToSplit.length === 0 ? 0.5 : 1 }}
+                            >
+                                Confirmar Divisão (1/{selectedUsersToSplit.length + 1})
+                            </button>
+                        </div>
+                    </div>
+                )}
+                <style>{`
+                    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+                `}</style>
 
                 {/* Pedidos da Mesa (Toggle) */}
                 {othersOrdersList.length > 0 && (
