@@ -1,100 +1,46 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useTablePresence } from '../hooks/useTablePresence';
-import { Receipt, MapPin, LogOut, Camera, History, Utensils, Bell, ChevronRight, Clock } from 'lucide-react';
-import { api } from '../services/api';
+import { useTableContext } from '../context/TableContext';
+import { Receipt, MapPin, LogOut, Camera, History, Utensils, Bell, ChevronRight, Keyboard, Beer } from 'lucide-react';
+import { api, supabase } from '../services/api';
 
 const Home = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const [loading, setLoading] = useState(true);
-    const [hasTab, setHasTab] = useState(false);
-    const [establishment, setEstablishment] = useState(null);
-    const [tableId, setTableId] = useState(null);
-    const [activeOrders, setActiveOrders] = useState(false); // Mock for "Preparo" badge
+    const { tableId, establishment, onlineUsers } = useTableContext();
+    const [activeOrdersCount, setActiveOrdersCount] = useState(0);
 
-    // Track presence
-    const { onlineUsers } = useTablePresence();
-
+    // Fetch active orders count for status tag
     useEffect(() => {
-        const init = async () => {
-            try {
-                // FORCE DEMO USER TO TABLE 1 IMPLICITLY
-                if (user?.email === 'demo@demo' || user?.email === 'demo@demo.com') {
-                    localStorage.setItem('my_table_id', '1');
-                }
+        if (!tableId || !user) return;
 
-                // Check Tab
-                const storedTableId = localStorage.getItem('my_table_id');
+        const fetchStatus = async () => {
+            // Count pending/preparing orders for CURRENT USER
+            const { count } = await supabase
+                .from('orders')
+                .select('*', { count: 'exact', head: true })
+                .eq('table_id', tableId)
+                .eq('ordered_by', user.id)
+                .in('status', ['pending', 'preparing']);
 
-                if (storedTableId) {
-                    setTableId(storedTableId);
-                    setHasTab(true);
-
-                    // Fetch Establishment Context
-                    const tableData = await api.getTable(storedTableId);
-                    if (tableData && tableData.establishment) {
-                        setEstablishment(tableData.establishment);
-                        // Inject Brand Color if available, else default Gold
-                        const brandColor = tableData.establishment.theme_color || '#f59e0b';
-                        document.documentElement.style.setProperty('--brand-color', brandColor);
-
-                        // IMPÉRIO DEMO THEME (Red Background override)
-                        if (tableData.establishment.id === 1) {
-                            document.documentElement.style.setProperty('--bg-primary', '#450a0a'); // Red 950
-                            document.documentElement.style.setProperty('--bg-secondary', '#7f1d1d'); // Red 900
-                            document.documentElement.style.setProperty('--bg-tertiary', '#991b1b'); // Red 800
-                            document.documentElement.style.setProperty('--text-primary', '#fffFb1'); // Warm White
-                            document.documentElement.style.setProperty('--text-secondary', '#fca5a5'); // Red 300
-                        }
-                    }
-                    // Check for active orders (Simulated)
-                    setActiveOrders(true);
-                } else {
-                    // DEMO FALLBACK: Fetch Default Establishment (ID 1)
-                    const estabData = await api.getEstablishment(1);
-                    if (estabData) {
-                        setEstablishment(estabData);
-                        const brandColor = estabData.theme_color || '#f59e0b';
-                        document.documentElement.style.setProperty('--brand-color', brandColor);
-
-                        // IMPÉRIO DEMO THEME
-                        if (estabData.id === 1) {
-                            document.documentElement.style.setProperty('--bg-primary', '#450a0a');
-                            document.documentElement.style.setProperty('--bg-secondary', '#7f1d1d');
-                            document.documentElement.style.setProperty('--bg-tertiary', '#991b1b');
-                            document.documentElement.style.setProperty('--text-primary', '#fffFb1');
-                            document.documentElement.style.setProperty('--text-secondary', '#fca5a5');
-                        }
-                    }
-
-                    // FORCE DEMO USER TO TABLE 1
-                    if (user?.email === 'demo@demo') {
-                        setTableId('1');
-                        setHasTab(true);
-                        setActiveOrders(true);
-                        localStorage.setItem('my_table_id', '1');
-                    }
-                }
-            } catch (e) {
-                console.error("Init Error", e);
-            } finally {
-                setLoading(false);
-            }
+            setActiveOrdersCount(count || 0);
         };
 
-        if (user !== undefined) init();
-    }, [user]);
+        fetchStatus();
+
+        // Subscribe to changes
+        const channel = supabase.channel(`home_status:${user.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `table_id=eq.${tableId}` }, fetchStatus)
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [tableId, user]);
+
 
     const userFirstName = user?.name?.split(' ')[0] || 'Visitante';
-
-    if (loading) return (
-        <div className="container" style={{ justifyContent: 'center', alignItems: 'center' }}>
-            <div style={{ width: '32px', height: '32px', border: '3px solid var(--bg-tertiary)', borderTopColor: 'var(--brand-color)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-            <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-        </div>
-    );
 
     return (
         <div className="container fade-in">
@@ -103,7 +49,7 @@ const Home = () => {
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 marginBottom: '0.5rem', paddingTop: '1rem'
             }}>
-                <div onClick={() => navigate('/profile')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div onClick={() => navigate('/history')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     {user?.avatar ? (
                         <img
                             src={user?.avatar}
@@ -135,7 +81,7 @@ const Home = () => {
             {/* Main Actions */}
             <main style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 }}>
 
-                {hasTab ? (
+                {tableId ? (
                     <>
                         {/* HERO: Establishment Context */}
                         <div style={{ padding: '0.5rem 0 1.5rem', textAlign: 'center' }}>
@@ -230,7 +176,7 @@ const Home = () => {
                                 style={{
                                     flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center',
                                     padding: '1.25rem', marginBottom: 0, gap: '4px', borderLeft: '4px solid var(--brand-color)',
-                                    position: 'relative', overflow: 'hidden'
+                                    position: 'relative', overflow: 'hidden', cursor: 'pointer'
                                 }}
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
@@ -238,7 +184,7 @@ const Home = () => {
                                     <Receipt size={20} style={{ opacity: 0.3 }} />
                                 </div>
 
-                                {activeOrders && (
+                                {activeOrdersCount > 0 && (
                                     <span style={{
                                         fontSize: '0.65rem', background: '#dcfce7', color: '#166534',
                                         padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold',
@@ -254,7 +200,8 @@ const Home = () => {
                                 className="card"
                                 style={{
                                     alignItems: 'center', justifyContent: 'center', gap: '8px',
-                                    padding: '1.25rem', marginBottom: 0, background: 'var(--bg-tertiary)'
+                                    padding: '1.25rem', marginBottom: 0, background: 'var(--bg-tertiary)',
+                                    cursor: 'pointer'
                                 }}
                             >
                                 <span style={{ fontSize: '1.5rem' }}>💸</span>
@@ -275,19 +222,22 @@ const Home = () => {
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.5rem',
                                 border: '1px solid var(--bg-tertiary)'
                             }}>
-                                <Camera size={32} style={{ color: 'var(--brand-color)' }} />
+                                <Beer size={32} style={{ color: 'var(--brand-color)' }} />
                             </div>
                             <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Você não está em uma mesa</h2>
                             <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem', maxWidth: '300px' }}>
                                 Para fazer pedidos, escaneie o QR Code que está sobre a mesa.
                             </p>
-                            <button
-                                onClick={() => navigate('/scanner')}
-                                className="btn btn-primary"
-                                style={{ width: 'auto', paddingLeft: '2rem', paddingRight: '2rem' }}
-                            >
-                                <Camera size={20} /> Ler QR Code
-                            </button>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+                                <button
+                                    onClick={() => navigate('/scanner')}
+                                    className="btn btn-primary"
+                                    style={{ width: '100%', padding: '1rem', justifyContent: 'center' }}
+                                >
+                                    <Camera size={20} /> Ler QR Code
+                                </button>
+                            </div>
                         </div>
 
                         {/* Footer Action: History */}
@@ -311,27 +261,6 @@ const Home = () => {
                                 </div>
                                 <ChevronRight size={20} color="var(--text-muted)" />
                             </button>
-
-                            {/* DEMO RESET BUTTON (Visible to Demo Only) */}
-                            {(user?.email === 'demo@demo' || user?.email === 'demo@demo.com') && (
-                                <button
-                                    onClick={async () => {
-                                        if (window.confirm("Reiniciar cenário de DEMO? Isso restaurará, Água, Vinho e Pizza.")) {
-                                            setLoading(true);
-                                            await api.resetDemoData(1);
-                                            window.location.reload();
-                                        }
-                                    }}
-                                    style={{
-                                        marginTop: '1rem', width: '100%', padding: '0.8rem',
-                                        background: 'transparent', border: '1px dashed var(--text-muted)',
-                                        color: 'var(--text-muted)', borderRadius: '12px', cursor: 'pointer',
-                                        fontSize: '0.8rem'
-                                    }}
-                                >
-                                    🔄 Reiniciar Cenário Demo
-                                </button>
-                            )}
                         </div>
                     </>
                 )}

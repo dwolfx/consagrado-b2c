@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, ShoppingBag, CheckCircle, Beer, Wine, UtensilsCrossed, Coffee, Pizza, IceCream, Sandwich } from 'lucide-react';
+import { ArrowLeft, Search, ShoppingBag, CheckCircle, Beer, Wine, UtensilsCrossed, Coffee, Pizza, IceCream, Sandwich, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -243,6 +243,18 @@ const Menu = () => {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                     <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                </div>
+
+                {/* User Count Indicator */}
+                <div style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    background: 'var(--bg-tertiary)', padding: '0.6rem', borderRadius: '12px',
+                    border: onlineUsers.length > 1 ? '1px solid var(--primary)' : '1px solid transparent'
+                }}>
+                    <Users size={20} color={onlineUsers.length > 1 ? 'var(--primary)' : 'var(--text-secondary)'} />
+                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: onlineUsers.length > 1 ? 'var(--primary)' : 'var(--text-secondary)' }}>
+                        {onlineUsers.length}
+                    </span>
                 </div>
             </header>
 

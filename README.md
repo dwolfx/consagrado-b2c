@@ -33,6 +33,7 @@ Interface projetada para ambientes noturnos:
 2.  **Comanda Inteligente**:
     *   Vê o que está bebendo em tempo real.
     *   **Divisão Automatizada**: O app calcula sua parte do vinho ou balde.
+    *   **Detecção de Mesa**: Mostra quantas pessoas estão na mesa em tempo real.
 3.  **Pagamento & Saída**:
     *   Paga via PIX/Cartão pelo app.
     *   **Taxa Flexível**: Escolha entre 8%, 10% ou 13% (ou justifique a remoção).
