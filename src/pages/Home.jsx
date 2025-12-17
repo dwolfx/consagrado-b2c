@@ -2,14 +2,32 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTableContext } from '../context/TableContext';
-import { Receipt, MapPin, LogOut, Camera, History, Utensils, Bell, ChevronRight, Keyboard, Beer } from 'lucide-react';
+import { Receipt, MapPin, LogOut, Camera, History, Utensils, Bell, ChevronRight, Keyboard, Beer, X } from 'lucide-react';
 import { api, supabase } from '../services/api';
 
 const Home = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const { tableId, establishment, onlineUsers } = useTableContext();
+    const { tableId, establishment, onlineUsers, setTableId } = useTableContext();
     const [statusBadge, setStatusBadge] = useState(null); // { label, color, bg }
+    const [showManualInput, setShowManualInput] = useState(false);
+    const [manualCode, setManualCode] = useState('');
+
+    const handleManualSubmit = async () => {
+        if (!manualCode) return;
+        try {
+            const table = await api.getTableByCode(manualCode);
+            if (table && table.id) {
+                setTableId(table.id);
+                // No need to navigate, just state update re-renders Home with table view
+            } else {
+                alert('Mesa não encontrada!');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Erro ao buscar mesa.');
+        }
+    };
 
     // Fetch active orders count for status tag
     useEffect(() => {
@@ -247,23 +265,60 @@ const Home = () => {
                                     <Camera size={20} /> Ler QR Code
                                 </button>
 
-                                {/* Manual Code Button Added */}
-                                <button
-                                    onClick={() => navigate('/scanner', { state: { mode: 'manual' } })} // Scanner has manual input, checking if user wants direct shortcut?
-                                    // User asked for "Opção de colocar código antes de clicar em QR Code". 
-                                    // Interpretation: Add a secondary button that goes to manual input. 
-                                    // Since Scanner handles both, I'll update it to accept a state/prop or just direct user to scanner which has the button. 
-                                    // But user asked for option on HOME.
-                                    // Let's reuse Scanner page but maybe pass a state? Or just rename the area.
-                                    // Simplifying: Just a secondary button "Digitar Código" that goes to scanner (which has the mode).
-                                    className="btn"
-                                    style={{
-                                        width: '100%', padding: '1rem', justifyContent: 'center',
-                                        background: 'transparent', border: '1px solid var(--bg-tertiary)', color: 'var(--text-primary)'
-                                    }}
-                                >
-                                    <Keyboard size={20} /> Digitar Código
-                                </button>
+                                {/* Manual Code Section */}
+                                <div style={{ width: '100%' }}>
+                                    {!showManualInput ? (
+                                        <button
+                                            onClick={() => setShowManualInput(true)}
+                                            className="btn"
+                                            style={{
+                                                width: '100%', padding: '1rem', justifyContent: 'center',
+                                                background: 'transparent', border: '1px solid var(--bg-tertiary)', color: 'var(--text-primary)'
+                                            }}
+                                        >
+                                            <Keyboard size={20} /> Digitar Código
+                                        </button>
+                                    ) : (
+                                        <div style={{ animation: 'slideDown 0.3s ease-out' }}>
+                                            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                                <input
+                                                    type="text"
+                                                    value={manualCode}
+                                                    onChange={(e) => setManualCode(e.target.value.toUpperCase())}
+                                                    placeholder="Cód. Mesa (Ex: A1)"
+                                                    autoFocus
+                                                    style={{
+                                                        flex: 1, padding: '1rem', borderRadius: '12px',
+                                                        background: 'var(--bg-tertiary)', border: '1px solid var(--border-color)',
+                                                        color: 'var(--text-primary)', textTransform: 'uppercase',
+                                                        fontWeight: 'bold', fontSize: '1rem'
+                                                    }}
+                                                />
+                                                <button
+                                                    onClick={() => {
+                                                        setShowManualInput(false);
+                                                        setManualCode('');
+                                                    }}
+                                                    className="btn"
+                                                    style={{
+                                                        padding: '0 1rem', background: 'var(--bg-tertiary)',
+                                                        color: 'var(--text-secondary)'
+                                                    }}
+                                                >
+                                                    <X size={20} />
+                                                </button>
+                                            </div>
+                                            <button
+                                                onClick={handleManualSubmit}
+                                                className="btn btn-primary"
+                                                disabled={!manualCode}
+                                                style={{ width: '100%', justifyContent: 'center', padding: '1rem' }}
+                                            >
+                                                Entrar na Mesa
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         </div>
 
@@ -297,3 +352,12 @@ const Home = () => {
 };
 
 export default Home;
+
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+`;
+document.head.appendChild(style);

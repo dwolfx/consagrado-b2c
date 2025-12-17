@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { X, Martini, Keyboard } from 'lucide-react';
 import { api } from '../services/api';
 import { useState } from 'react';
@@ -11,13 +11,7 @@ const Scanner = () => {
     const [error, setError] = useState('');
     const [showInput, setShowInput] = useState(false);
 
-    // Check if navigated with manual mode request
-    const location = useLocation();
-    useEffect(() => {
-        if (location.state?.mode === 'manual') {
-            setShowInput(true);
-        }
-    }, [location]);
+
 
     const handleSimulation = async () => {
         try {
