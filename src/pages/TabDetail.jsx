@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, AlertCircle, CreditCard, Bell } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import { api, supabase } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useTablePresence } from '../hooks/useTablePresence';
 
@@ -38,6 +38,20 @@ const TabDetail = () => {
             }
         };
         loadTab();
+
+        // Realtime Subscription
+        const tableId = localStorage.getItem('my_table_id');
+        if (tableId) {
+            const channel = supabase.channel(`tab_detail:${tableId}`)
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `table_id=eq.${tableId}` }, () => {
+                    loadTab();
+                })
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(channel);
+            };
+        }
     }, [navigate]);
 
     // Name Resolution Helper
@@ -83,18 +97,20 @@ const TabDetail = () => {
     const executeSplit = async () => {
         if (!splitItem || selectedUsersToSplit.length === 0) return;
 
-        // Target IDs includes ME + Selected Others
-        const targets = [user.id, ...selectedUsersToSplit];
+        // MVP: Send Request to FIRST selected user (Simpler flow for now if 1 target)
+        // If multiple targets, we'd need multiple accepts or a voting system.
+        // User said "Quem estiver recebendo o pedido pra dividir precisa ACEITAR".
+        // Assuming 1 target for simplicity or broadcasting to all.
 
-        const success = await api.splitOrder(splitItem, targets);
-        if (success) {
-            setSplitItem(null);
-            // Re-fetch handled by parent/effect or realtime reload? 
-            // In this architecture, realtime triggers should handle it, but we can force reload
-            window.location.reload();
-        } else {
-            alert('Erro ao dividir item.');
-        }
+        // We will broadcast to ALL targets.
+        // The first one to 'Accept' will trigger the split (Race condition acceptable for MVP).
+        // Or better: Each logic runs independently? No, we need 1 delete.
+        // Let's assume the Receiver's Accept triggers the actual API call.
+
+        await api.requestSplit(splitItem, selectedUsersToSplit, user.name || 'Alguém', user.id);
+
+        alert("Solicitação enviada!");
+        setSplitItem(null);
     };
 
     // Filter out internal notification items AND paid items (as requested only unpaid active items)

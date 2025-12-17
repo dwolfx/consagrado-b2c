@@ -188,8 +188,8 @@ const AvatarEditor = () => {
         setLoading(true);
         const newAvatar = getAvatarUrl();
         await updateUser({ avatar: newAvatar });
-        // alert('Visual renovado com sucesso! 😎'); // Optional: Use toast instead 
-        navigate('/profile');
+        // Use navigate(-1) to return to previous screen (Profile) correctly without creating loop
+        navigate(-1);
         setLoading(false);
     };
 

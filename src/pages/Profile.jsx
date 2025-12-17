@@ -112,7 +112,7 @@ const Profile = () => {
                 <h2>Meu Perfil</h2>
             </header>
 
-            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
                 <div
                     onClick={() => navigate('/avatar-editor')}
                     style={{ position: 'relative', display: 'inline-block', cursor: 'pointer' }}

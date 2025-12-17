@@ -140,6 +140,29 @@ export const api = {
     },
 
     // Splitting
+    getOrder: async (id) => {
+        const { data } = await supabase.from('orders').select('*').eq('id', id).single();
+        return data;
+    },
+
+    requestSplit: async (orderItem, targetUserIds, requesterName, requesterId) => {
+        // Send Broadcast
+        const channel = supabase.channel(`table_notifications:${orderItem.table_id}`);
+        await channel.subscribe();
+        await channel.send({
+            type: 'broadcast',
+            event: 'request_split',
+            payload: {
+                orderId: orderItem.id,
+                itemName: orderItem.name,
+                targetIds: targetUserIds,
+                requesterName,
+                requesterId
+            }
+        });
+        return true;
+    },
+
     splitOrder: async (originalOrder, targetUserIds) => {
         // 1. Delete original order
         const { error: delError } = await supabase

@@ -249,7 +249,7 @@ const Home = () => {
 
                                 {/* Manual Code Button Added */}
                                 <button
-                                    onClick={() => navigate('/scanner')} // Scanner has manual input, checking if user wants direct shortcut?
+                                    onClick={() => navigate('/scanner', { state: { mode: 'manual' } })} // Scanner has manual input, checking if user wants direct shortcut?
                                     // User asked for "Opção de colocar código antes de clicar em QR Code". 
                                     // Interpretation: Add a secondary button that goes to manual input. 
                                     // Since Scanner handles both, I'll update it to accept a state/prop or just direct user to scanner which has the button. 

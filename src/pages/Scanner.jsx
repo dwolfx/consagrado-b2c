@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { X, Martini, Keyboard } from 'lucide-react';
 import { api } from '../services/api';
 import { useState } from 'react';
@@ -10,6 +10,14 @@ const Scanner = () => {
     const [manualCode, setManualCode] = useState('');
     const [error, setError] = useState('');
     const [showInput, setShowInput] = useState(false);
+
+    // Check if navigated with manual mode request
+    const location = useLocation();
+    useEffect(() => {
+        if (location.state?.mode === 'manual') {
+            setShowInput(true);
+        }
+    }, [location]);
 
     const handleSimulation = async () => {
         try {
@@ -129,7 +137,7 @@ const Scanner = () => {
                                 autoFocus
                                 style={{
                                     padding: '16px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.4)',
-                                    background: 'rgba(0,0,0,0.6)', color: 'white',
+                                    background: '#000000', color: 'white',
                                     fontSize: '1.2rem', textTransform: 'uppercase', outline: 'none',
                                     textAlign: 'center', letterSpacing: '2px'
                                 }}
