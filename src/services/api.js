@@ -15,6 +15,21 @@ export const api = {
         if (error) console.error('Error fetching products', error);
         return data || [];
     },
+    getProduct: async (id) => {
+        console.log(`🔎 api.getProduct called with ID: ${id}`);
+        let { data, error } = await supabase
+            .from('products')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) {
+            console.error('❌ Error fetching product from DB:', error);
+        } else {
+            console.log('✅ DB Product Response:', data);
+        }
+        return data;
+    },
 
     // Tables
     getTables: async () => {
@@ -54,29 +69,38 @@ export const api = {
         return data;
     },
     // Orders
-    addOrder: async (tableId, orderItem) => {
-        // Just insert into orders table. Realtime triggers will handle the rest.
+    addOrder: async (tableId, orderData) => {
+        console.log("📝 api.addOrder", { tableId, orderData });
         const { data, error } = await supabase
             .from('orders')
             .insert([{
                 table_id: tableId,
-                product_id: orderItem.productId,
-                name: orderItem.name,
-                price: orderItem.price,
-                quantity: orderItem.quantity,
+                product_id: orderData.productId,
+                name: orderData.name,
+                price: parseFloat(orderData.price), // Ensure Number
+                quantity: orderData.quantity,
                 status: 'pending',
-                ordered_by: orderItem.orderedBy
+                ordered_by: (orderData.orderedBy || '').toLowerCase() // Ensure UUID format
             }])
             .select();
 
+        if (error) {
+            console.error('❌ Error adding order:', error);
+            return null;
+        }
+        console.log('✅ Order added successfully:', data);
+
         // Also update table status to occupied if needed
-        await supabase
+        // Note: The error variable here would still hold the error from the insert operation.
+        // If we want to handle the update error separately, we'd need a new variable.
+        const { error: updateError } = await supabase
             .from('tables')
             .update({ status: 'occupied' })
             .eq('id', tableId);
 
-        if (error) console.error('Error adding order', error);
-        return data;
+        if (updateError) console.error('Error updating table status to occupied', updateError);
+
+        return data ? data[0] : null;
     },
 
     // Service
@@ -148,16 +172,71 @@ export const api = {
     requestSplit: async (orderItem, targetUserIds, requesterName, requesterId) => {
         // Send Broadcast
         const channel = supabase.channel(`table_notifications:${orderItem.table_id}`);
-        await channel.subscribe();
-        await channel.send({
-            type: 'broadcast',
-            event: 'request_split',
-            payload: {
-                orderId: orderItem.id,
-                itemName: orderItem.name,
-                targetIds: targetUserIds,
-                requesterName,
-                requesterId
+        await channel.subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                await channel.send({
+                    type: 'broadcast',
+                    event: 'request_split',
+                    payload: {
+                        orderId: orderItem.id,
+                        itemName: orderItem.name,
+                        targetIds: targetUserIds,
+                        requesterName,
+                        requesterId
+                    }
+                });
+                setTimeout(() => supabase.removeChannel(channel), 1000);
+            }
+        });
+        return true;
+    },
+
+    requestOrderShare: async (itemDetails, targetUserId, requesterName, requesterId) => {
+        // itemDetails: { name, price, quantity, tableId }
+        // Send DIRECTLY to the target user's channel
+        const channel = supabase.channel(`user_notifications:${targetUserId}`);
+        await channel.subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                await channel.send({
+                    type: 'broadcast',
+                    event: 'request_order_share',
+                    payload: {
+                        itemDetails,
+                        targetUserId,
+                        requesterName,
+                        requesterId
+                    }
+                });
+                setTimeout(() => supabase.removeChannel(channel), 1000);
+            }
+        });
+        return true;
+    },
+
+    sendSplitResponse: async (targetUserId, status, responderName) => {
+        console.log(`📡 api.sendSplitResponse called for User: ${targetUserId} | Status: ${status}`);
+        const channel = supabase.channel(`user_notifications:${targetUserId}`);
+        await channel.subscribe(async (statusCode) => {
+            console.log(`Correction: Subscription status for user_notifications:${targetUserId} is ${statusCode}`);
+            if (statusCode === 'SUBSCRIBED') {
+                console.log("✅ Channel SUBSCRIBED. Sending split_response broadcast...");
+                await channel.send({
+                    type: 'broadcast',
+                    event: 'split_response',
+                    payload: {
+                        status,
+                        responderName,
+                        responderId: (await supabase.auth.getUser()).data.user?.id
+                    }
+                });
+                console.log("📤 split_response SENT.");
+                // Ensure message has time to fly before kill
+                setTimeout(() => {
+                    console.log("🔌 Removing channel...");
+                    supabase.removeChannel(channel);
+                }, 1000);
+            } else {
+                console.warn(`⚠️ Channel subscription failed or timed out: ${statusCode}`);
             }
         });
         return true;
@@ -192,6 +271,54 @@ export const api = {
 
         const { error: insError } = await supabase.from('orders').insert(newOrders);
         if (insError) console.error("Error inserting split orders", insError);
+
+        return !insError;
+    },
+
+    redistributeOrder: async (relatedOrders, targetUserIds) => {
+        // relatedOrders: Array of order objects currently part of the split
+        // targetUserIds: Array of user IDs who should be in the NEW split
+
+        if (!relatedOrders || relatedOrders.length === 0) return false;
+
+        const originalOrder = relatedOrders[0]; // Take one as template
+        const totalAmount = relatedOrders.reduce((acc, o) => acc + o.price, 0); // Reconstruct total price
+        // OR better: use originalOrder.price * relatedOrders.length if we trust equality, 
+        // but robust way is sum. 
+        // Actually, if it was "1/3 Pizza" @ 10.00, total was 30.00.
+        // If we have 3 orders of 10.00, total is 30.00. Correct.
+
+        // 1. Delete ALL old related orders
+        const idsToDelete = relatedOrders.map(o => o.id);
+        const { error: delError } = await supabase
+            .from('orders')
+            .delete()
+            .in('id', idsToDelete);
+
+        if (delError) {
+            console.error("Error deleting old orders for redistribution", delError);
+            return false;
+        }
+
+        // 2. Create NEW orders
+        const totalParts = targetUserIds.length;
+        const newPrice = totalAmount / totalParts;
+        // Clean name: remove existing "1/X " prefix if present to avoid "1/2 1/3 Pizza"
+        const cleanName = originalOrder.name.replace(/^\d+\/\d+\s/, '');
+        const newName = `1/${totalParts} ${cleanName}`;
+
+        const newOrders = targetUserIds.map(userId => ({
+            table_id: originalOrder.table_id,
+            product_id: originalOrder.product_id,
+            name: newName,
+            price: newPrice,
+            quantity: originalOrder.quantity,
+            status: originalOrder.status,
+            ordered_by: userId
+        }));
+
+        const { error: insError } = await supabase.from('orders').insert(newOrders);
+        if (insError) console.error("Error inserting redistributed orders", insError);
 
         return !insError;
     },

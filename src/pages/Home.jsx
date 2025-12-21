@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTableContext } from '../context/TableContext';
+import { useToast } from '../context/ToastContext';
 import { Receipt, MapPin, LogOut, Camera, History, Utensils, Bell, ChevronRight, Keyboard, Beer, X } from 'lucide-react';
 import { api, supabase } from '../services/api';
 
 const Home = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const { addToast } = useToast();
     const { tableId, establishment, onlineUsers, setTableId } = useTableContext();
     const [statusBadge, setStatusBadge] = useState(null); // { label, color, bg }
     const [showManualInput, setShowManualInput] = useState(false);
@@ -21,11 +23,11 @@ const Home = () => {
                 setTableId(table.id);
                 // No need to navigate, just state update re-renders Home with table view
             } else {
-                alert('Mesa não encontrada!');
+                addToast('Mesa não encontrada!', 'error');
             }
         } catch (e) {
             console.error(e);
-            alert('Erro ao buscar mesa.');
+            addToast('Erro ao buscar mesa.', 'error');
         }
     };
 
@@ -180,7 +182,7 @@ const Home = () => {
                             onClick={async () => {
                                 if (window.confirm('Chamar atendimento na mesa?')) {
                                     await api.callWaiter(tableId, user?.id);
-                                    alert('Chamado enviado!');
+                                    addToast('Chamado enviado!', 'success');
                                 }
                             }}
                             className="btn"

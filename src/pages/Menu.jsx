@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Search, ShoppingBag, CheckCircle, Beer, Wine, UtensilsCrossed, Coffee, Pizza, IceCream, Sandwich, Users } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import { api, supabase } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useTablePresence } from '../hooks/useTablePresence';
+import { useToast } from '../context/ToastContext';
 import SplitItemModal from '../components/SplitItemModal';
 
 const CATEGORY_ICONS = {
@@ -23,6 +24,7 @@ const CATEGORY_ORDER = [
 const Menu = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { addToast } = useToast();
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState(null);
@@ -36,6 +38,11 @@ const Menu = () => {
 
     // Split Modal State
     const [splittingItem, setSplittingItem] = useState(null);
+
+    // Wait Logic State
+    const [waitStatus, setWaitStatus] = useState('idle'); // idle, waiting, accepted, rejected
+    const [pendingSplitData, setPendingSplitData] = useState(null); // Stores { item, cart, selectedUserIds }
+    const [responderName, setResponderName] = useState('');
 
     useEffect(() => {
         const load = async () => {
@@ -83,6 +90,32 @@ const Menu = () => {
         load();
     }, []);
 
+    // Split Response Listener
+    // Split Response Listener
+    useEffect(() => {
+        let channel;
+        // Listen on MY user channel for responses directed to ME
+        if (user?.id) {
+            console.log(`📡 Listening for Split Responses on user_notifications:${user.id}`);
+            channel = supabase.channel(`user_notifications:${user.id}`)
+                .on('broadcast', { event: 'split_response' }, (payload) => {
+                    console.log("🔥 Received Split Response", payload);
+
+                    if (payload.payload.status === 'accepted') {
+                        setWaitStatus('accepted');
+                        setResponderName(payload.payload.responderName);
+                    } else if (payload.payload.status === 'rejected') {
+                        setWaitStatus('rejected');
+                        setResponderName(payload.payload.responderName);
+                    }
+                })
+                .subscribe();
+        }
+        return () => {
+            if (channel) supabase.removeChannel(channel);
+        };
+    }, [user?.id]);
+
     const filteredItems = products.filter(item => {
         // Filter out synthetic split items from the main list display
         if (item.isSplit) return false;
@@ -116,47 +149,9 @@ const Menu = () => {
     };
 
     const handleItemClick = (item) => {
-        // If there are multiple users, open split modal
-        if (onlineUsers.length > 1) {
-            setSplittingItem(item);
-        } else {
-            // Single user, just add to self
-            updateCartDirect(user?.id || 'guest', item, 1);
-        }
-    };
-
-    const handleSplitConfirm = (item, selectedUserIds) => {
-        if (!selectedUserIds || selectedUserIds.length === 0) return;
-
-        // 1. Single User Select (Normal Add)
-        if (selectedUserIds.length === 1) {
-            updateCartDirect(selectedUserIds[0], item, 1);
-        }
-        // 2. Multi User Select (Split logic)
-        else {
-            const count = selectedUserIds.length;
-            const splitPrice = item.price / count;
-            // E.g. "1/2 Pizza" or "1/3 Batata"
-            const splitName = `1/${count} ${item.name}`;
-
-            // Create a synthetic product for this split instance
-            const syntheticProduct = {
-                ...item,
-                id: `${item.id}-split-${Date.now()}`, // Unique ID for this specific split adding
-                name: splitName,
-                price: splitPrice,
-                isSplit: true
-            };
-
-            // Add synthetic product to state so it can be referenced in Cart/API
-            setProducts(prev => [...prev, syntheticProduct]);
-
-            // Add 1 qty to each selected user
-            selectedUserIds.forEach(uid => {
-                updateCartDirect(uid, syntheticProduct, 1);
-            });
-        }
-        setSplittingItem(null);
+        // Just add to self (cart)
+        updateCartDirect(user?.id || 'guest', item, 1);
+        addToast(`${item.name} adicionado!`, 'success');
     };
 
     // Calculate total
@@ -172,53 +167,186 @@ const Menu = () => {
         return total + Object.values(userCart).reduce((a, b) => a + b, 0);
     }, 0);
 
+    const onlineUsersSafe = onlineUsers && onlineUsers.length > 0 ? onlineUsers : [user || { id: 'guest', name: 'Você' }];
+
+    const handleSplitConfirm = async (item, selectedUserIds) => {
+        // item here is actually the "Virtual Cart Item" representing total
+        if (!selectedUserIds || selectedUserIds.length === 0) return;
+
+        setSplittingItem(null);
+        // Save state for finalization waiting for approval
+        setPendingSplitData({ selectedUserIds });
+        setWaitStatus('waiting');
+
+        try {
+            const tableId = localStorage.getItem('my_table_id');
+            // Send requests to OTHERS only
+            const others = selectedUserIds.filter(uid => uid !== user.id);
+
+            // SPECIAL CASE: If user selected ONLY themselves (or nobody else online)
+            // Immediately finalize as a normal order (isSplit=false)
+            if (others.length === 0) {
+                console.log("No other users selected. Finalizing immediately.");
+                // Pass data directly to avoid async state race condition
+                await finalizeSplitOrder(false, { selectedUserIds });
+                return;
+            }
+
+            for (const uid of others) {
+                console.log(`📤 Sending Split Request for item: ${item.name}`, { price: item.price, type: typeof item.price });
+
+                // Fix: Send ACTUAL product details so Receiver can create valid order
+                await api.requestOrderShare({
+                    name: item.name,
+                    price: item.price, // Send full unit price (visual reference only, receiver will validate)
+                    quantity: 1,
+                    productId: item.id, // 'cart-total' or specific ID
+                    items: item.items, // <--- DETAILED LIST FOR SECURITY
+                    totalParts: selectedUserIds.length, // <--- CRITICAL: Send split count (e.g. 2, 3)
+                    tableId: tableId,
+                    requesterId: user.id
+                }, uid, user.name || 'Alguém', user.id);
+            }
+
+        } catch (error) {
+            console.error("Error sending split requests", error);
+            setWaitStatus('idle');
+            addToast('Erro ao solicitar divisão.', 'error');
+        }
+    };
+
+    const finalizeSplitOrder = async (isSplit, overrideData = null) => {
+        setSending(true);
+        setWaitStatus('idle'); // Close modal
+
+        const splitData = overrideData || pendingSplitData;
+
+        if (!splitData) {
+            console.error("No pending split data found!");
+            setSending(false);
+            addToast('Erro: Dados da divisão perdidos.', 'error');
+            return;
+        }
+
+        const { selectedUserIds } = splitData;
+        // If rejected and alone (isSplit=false), it's just me. 
+        // If accepted (isSplit=true), it's everyone selected.
+        const finalUserIds = isSplit ? selectedUserIds : [user.id];
+
+        try {
+            const tableId = localStorage.getItem('my_table_id');
+            const orderPromises = [];
+
+            // Calculate Split Ratio
+            // If isSplit=true, ratio = 1/N. If false, ratio = 1 (Full Price).
+            const splitRatio = isSplit ? (1 / finalUserIds.length) : 1;
+            console.log("🚩 [Menu] Finalizing Order. Ratio:", splitRatio, "Users:", finalUserIds);
+
+            const myCart = cart[user?.id];
+            if (myCart) {
+                for (const [productId, qty] of Object.entries(myCart)) {
+                    const product = products.find(p => String(p.id) === String(productId));
+                    if (product) {
+                        const splitName = finalUserIds.length > 1 ? `1/${finalUserIds.length} ${product.name}` : product.name;
+
+                        // Explicit check for requester
+                        if (finalUserIds.includes(user.id)) {
+                            console.log(`🚩 [Menu] Creating SELF order for ${product.name} @ ${product.price * splitRatio}`);
+                            orderPromises.push(api.addOrder(tableId, {
+                                productId: isSplit ? null : product.id,
+                                name: splitName,
+                                price: product.price * splitRatio,
+                                quantity: qty,
+                                orderedBy: user.id
+                            }));
+                        } else {
+                            console.warn("🚩 [Menu] User ID not in finalUserIds?", { uid: user.id, finalUserIds });
+                        }
+                    } else {
+                        console.error("🚩 [Menu] Product not found in list:", productId);
+                    }
+                }
+            } else {
+                console.error("🚩 [Menu] No cart found for user:", user?.id, cart);
+            }
+            await Promise.all(orderPromises);
+            addToast('Pedido enviado com sucesso! 👨‍🍳', 'success');
+            setCart({});
+            navigate('/');
+        } catch (e) {
+            console.error(e);
+            addToast('Erro ao finalizar pedido.', 'error');
+        } finally {
+            setSending(false);
+            setPendingSplitData(null);
+        }
+    };
+
+    // Handle Auto-Proceed on Accept
+    useEffect(() => {
+        if (waitStatus === 'accepted') {
+            const timer = setTimeout(() => {
+                finalizeSplitOrder(true);
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [waitStatus]); // Implicitly closes over fresh finalizeSplitOrder state
+
     const handleSendOrder = async () => {
         const tableId = localStorage.getItem('my_table_id');
         if (!tableId) {
-            alert('Você precisa escanear uma mesa primeiro!');
+            addToast('Você precisa escanear uma mesa primeiro!', 'error');
             navigate('/scanner');
             return;
         }
 
+        // If multiple users -> Confirm Split
+        if (onlineUsers.length > 1) {
+            // Create a virtual item for the modal to display TOTAL
+            // But include the ACTUAL ITEMS for the secure backend/receiver process
+            const myCart = cart[user?.id] || {};
+            const cartItems = Object.entries(myCart).map(([pid, qty]) => ({ productId: pid, quantity: qty }));
+
+            const virtualItem = {
+                name: 'Total do Pedido',
+                price: cartTotal,
+                id: 'cart-total',
+                items: cartItems // <--- Payload for receiver
+            };
+            setSplittingItem(virtualItem);
+            return;
+        }
+
+        // Single User Direct Send
+        console.log("📤 handleSendOrder: cartTotal =", cartTotal); // DEBUG TOTAL
         setSending(true);
         try {
             const orderPromises = [];
 
-            Object.entries(cart).forEach(([userId, userCart]) => {
-                // Determine Name for this User ID
-                let ordererName = 'Cliente';
-                if (userId === user?.id) ordererName = user?.name || 'Eu';
-                else {
-                    const found = onlineUsers.find(u => u.id === userId);
-                    if (found) ordererName = found.name;
-                }
+            const myCart = cart[user?.id];
 
-                Object.entries(userCart).forEach(([productId, qty]) => {
+            if (myCart) {
+                Object.entries(myCart).forEach(([productId, qty]) => {
                     const product = products.find(p => String(p.id) === String(productId));
                     if (product) {
-                        // Pass correctly to API
                         orderPromises.push(api.addOrder(tableId, {
-                            productId: product.isSplit ? null : product.id, // If split, maybe null to treat as ad-hoc? Or pass synthetic ID? 
-                            // API uses productId for referencing. If I pass a random string it might fail FK constraints if API enforces it.
-                            // Checking API: `product_id: orderItem.productId`. DB `product_id` is uuid/int? 
-                            // Seed uses INT 101, 102. DB Schema usually allows NULL product_id for custom items.
-                            // Let's pass NULL for splits to avoid FK error, since synthetic ID doesn't exist in 'products' table.
+                            productId: product.id,
                             name: product.name,
                             price: product.price,
                             quantity: qty,
-                            orderedBy: userId
+                            orderedBy: user.id
                         }));
                     }
                 });
-            });
+            }
 
             await Promise.all(orderPromises);
-            alert('Pedido enviado para a cozinha! 👨‍🍳');
+            addToast('Pedido enviado para a cozinha! 👨‍🍳', 'success');
             setCart({});
             navigate('/');
         } catch (error) {
             console.error("Error sending order", error);
-            alert('Erro ao enviar pedido :(');
+            addToast('Erro ao enviar pedido :(', 'error');
         } finally {
             setSending(false);
         }
@@ -406,10 +534,72 @@ const Menu = () => {
                 <SplitItemModal
                     item={splittingItem}
                     currentUser={user || { id: 'guest', name: 'Você' }}
-                    onlineUsers={onlineUsers.length > 0 ? onlineUsers : [user || { id: 'guest', name: 'Você' }]}
+                    onlineUsers={onlineUsersSafe}
                     onClose={() => setSplittingItem(null)}
                     onConfirm={handleSplitConfirm}
+                    confirmLabel="Confirmar Pedido"
                 />
+            )}
+
+            {/* WAITING MODAL */}
+            {waitStatus !== 'idle' && (
+                <div style={{
+                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem'
+                }}>
+                    <div className="card" style={{ width: '100%', textAlign: 'center', padding: '2rem' }}>
+                        {waitStatus === 'waiting' && (
+                            <>
+                                <div className="spinner" style={{ margin: '0 auto 1rem auto' }}></div>
+                                <h3>Aguardando confirmação...</h3>
+                                <p style={{ color: 'var(--text-secondary)' }}>Esperando os outros aceitarem.</p>
+                                <button
+                                    onClick={() => {
+                                        setWaitStatus('idle');
+                                        setPendingSplitData(null);
+                                        // Optional: Send "Cancel" broadcast if we want to be fancy later
+                                    }}
+                                    className="btn btn-secondary"
+                                    style={{ marginTop: '1rem', width: '100%' }}
+                                >
+                                    Cancelar
+                                </button>
+                            </>
+                        )}
+                        {waitStatus === 'accepted' && (
+                            <>
+                                <CheckCircle size={48} color="var(--primary)" style={{ margin: '0 auto 1rem auto' }} />
+                                <h3>Confirmado!</h3>
+                                <p>{responderName} aceitou dividir.</p>
+                                <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>Enviando pedido...</p>
+                            </>
+                        )}
+                        {waitStatus === 'rejected' && (
+                            <>
+                                <UtensilsCrossed size={48} color="#ef4444" style={{ margin: '0 auto 1rem auto' }} />
+                                <h3>Recusado</h3>
+                                <p>{responderName} preferiu não dividir.</p>
+                                <p style={{ margin: '1rem 0', fontWeight: 'bold' }}>Deseja continuar sozinho?</p>
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                    <button
+                                        onClick={() => { setWaitStatus('idle'); setPendingSplitData(null); }}
+                                        className="btn btn-secondary"
+                                        style={{ flex: 1 }}
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={() => finalizeSplitOrder(false)} // False = Not Split (Alone)
+                                        className="btn btn-primary"
+                                        style={{ flex: 1 }}
+                                    >
+                                        Continuar
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
             )}
         </div>
     );

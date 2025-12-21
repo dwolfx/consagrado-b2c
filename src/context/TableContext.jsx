@@ -171,8 +171,16 @@ export const TableProvider = ({ children }) => {
         dbUsers.forEach(u => map.set(u.id, u));
         // 2. Add/Overwrite with Realtime Users
         realtimeUsers.forEach(u => map.set(u.id, u));
-        return Array.from(map.values());
-    }, [dbUsers, realtimeUsers]);
+
+        const allUsers = Array.from(map.values());
+
+        // Sort: Current User First, then Alphabetical
+        return allUsers.sort((a, b) => {
+            if (a.id === user?.id) return -1;
+            if (b.id === user?.id) return 1;
+            return (a.name || '').localeCompare(b.name || '');
+        });
+    }, [dbUsers, realtimeUsers, user?.id]);
 
     return (
         <TableContext.Provider value={{

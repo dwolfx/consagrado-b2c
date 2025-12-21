@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, api } from '../services/api';
 import { useAuth } from './AuthContext';
 import { useTableContext } from './TableContext';
+import { useToast } from './ToastContext';
 import SplitRequestModal from '../components/SplitRequestModal';
 
 const NotificationContext = createContext({});
@@ -9,22 +10,21 @@ const NotificationContext = createContext({});
 export const NotificationProvider = ({ children }) => {
     const { user } = useAuth();
     const { tableId } = useTableContext();
+    const { addToast } = useToast();
     const [incomingRequest, setIncomingRequest] = useState(null);
 
     useEffect(() => {
         if (!user || !tableId) return;
 
-        // Channel for Broadcasts
-        const channel = supabase.channel(`table_notifications:${tableId}`);
-
-        channel
+        // 1. Table Channel (Broadcasts like "Someone wants to split bill")
+        // Kept for backward compatibility or other table-wide events
+        const tableChannel = supabase.channel(`table_notifications:${tableId}`)
             .on('broadcast', { event: 'request_split' }, (payload) => {
                 const { targetIds, orderId, itemName, requesterName, requesterId } = payload.payload;
-
-                // If I am one of the targets
-                if (targetIds.includes(user.id)) {
+                if (targetIds && targetIds.includes(user.id)) {
                     setIncomingRequest({
                         id: Date.now(),
+                        type: 'split_bill',
                         orderId,
                         itemName,
                         requesterName,
@@ -33,56 +33,157 @@ export const NotificationProvider = ({ children }) => {
                     });
                 }
             })
-            .on('broadcast', { event: 'confirm_split' }, async (payload) => {
-                // If I am the requester, and I receive a confirm
-                // Actually, the simpler flow for this MVP:
-                // 1. Target Accepts.
-                // 2. Target calls API to perform split (if they have permission) OR Target broadcasts "Accepted" back.
+            .subscribe();
 
-                // Let's rely on Target performing the split action if DB policies allow.
-                // If we receive confirm_split, it means someone triggered it.
-                // We can show a toast or just let the realtime updates handle the UI.
+        // 2. User Channel (Direct requests like "Share this order?")
+        // This is the primary channel for the new split flow
+        const userChannel = supabase.channel(`user_notifications:${user.id}`)
+            .on('broadcast', { event: 'request_order_share' }, (payload) => {
+                console.log("🔥 NotificationContext received SHARE request:", payload);
+                const { itemDetails, targetUserId, requesterName, requesterId } = payload.payload;
+
+                console.log("🔥 RECEIVER RAW ITEM:", itemDetails); // DEBUG PRICE
+
+                // Verify this message is actually for us (redundant but safe)
+                if (targetUserId === user.id) {
+                    setIncomingRequest({
+                        id: Date.now(),
+                        type: 'join_order',
+                        itemDetails, // { name, price, quantity, tableId }
+                        itemName: itemDetails.name,
+                        requesterName,
+                        requesterId
+                    });
+                }
             })
             .subscribe();
 
         return () => {
-            supabase.removeChannel(channel);
+            supabase.removeChannel(tableChannel);
+            supabase.removeChannel(userChannel);
         };
     }, [user, tableId]);
 
     const handleAccept = async () => {
+        console.log("🟢 handleAccept CLICKED", { incomingRequest, tableId });
         if (!incomingRequest) return;
 
-        // Execute Split
-        // Note: The logic requires deleting the original and creating new ones.
-        // We need the full order object. Our payload only has ID.
-        // We fetch it first.
-        try {
-            const fullOrder = await api.getOrder(incomingRequest.orderId); // We need to add this to API
-            if (fullOrder) {
-                // Determine targets (Requester + Targets)
-                // The targets list in payload might include me and others. 
-                // We should reconstruct the full list: Requester + All Targets.
-                const allParticipants = [incomingRequest.requesterId, ...incomingRequest.targetIds];
-                // Unique
-                const uniqueParticipants = [...new Set(allParticipants)];
+        // Capture data before closing modal
+        const req = { ...incomingRequest };
 
-                await api.splitOrder(fullOrder, uniqueParticipants);
-                alert("Divisão Aceita!");
-                setIncomingRequest(null);
-            } else {
-                alert("Pedido não encontrado ou já alterado.");
-                setIncomingRequest(null);
+        // Optimistic UI: Close modal immediately
+        setIncomingRequest(null);
+
+        try {
+            if (req.type === 'split_bill') {
+                const fullOrder = await api.getOrder(req.orderId);
+                if (fullOrder) {
+                    const allParticipants = [req.requesterId, ...req.targetIds];
+                    const uniqueParticipants = [...new Set(allParticipants)];
+
+                    await api.splitOrder(fullOrder, uniqueParticipants);
+                    addToast("Divisão Aceita! Comanda atualizada.", "success");
+                } else {
+                    addToast("Pedido não encontrado ou já alterado.", "error");
+                }
+            } else if (req.type === 'join_order') {
+                console.log("🚀 Processing Join Order. Requester:", req.requesterId, "[v3-SECURE-LOOP]");
+
+                // Helper to process a single item share
+                const processSingleItem = async (pid, qty) => {
+                    console.log(`🔒 Validating Item ID: ${pid} (Qty: ${qty})`);
+
+                    // 1. Fetch Authoritative Price (Security)
+                    const dbProduct = await api.getProduct(pid);
+
+                    if (!dbProduct) {
+                        console.error(`❌ Product ${pid} not found in DB. Skipping.`);
+                        addToast(`Erro: Item não encontrado (ID: ${pid})`, "error");
+                        return false;
+                    }
+
+                    const realPrice = Number(dbProduct.price);
+                    if (!realPrice || realPrice <= 0) {
+                        console.error(`❌ Invalid Price for ${dbProduct.name}:`, realPrice);
+                        return false;
+                    }
+
+                    // 2. Calculate Split (Dynamically based on payload)
+                    const totalParts = req.itemDetails.totalParts || 2; // Default to 2 if not sent
+                    const splitPrice = realPrice / totalParts;
+                    const splitName = `1/${totalParts} ${dbProduct.name}`;
+
+                    console.log(`🧮 Math: ${realPrice} / ${totalParts} = ${splitPrice}`);
+
+                    // 3. Create Order
+                    // We loop qty times if needed, or just insert one line with qty?
+                    // Usually split means 1 unit split. If I have 2 beers, do I split BOTH?
+                    // User request implies "splitting the bill", so yes, split everything.
+
+                    const newOrder = await api.addOrder(req.itemDetails.tableId, {
+                        productId: dbProduct.id, // Link to real product for analytics
+                        name: splitName,
+                        price: splitPrice,
+                        quantity: qty, // Keep quantity from cart
+                        orderedBy: user.id
+                    });
+
+                    return !!newOrder;
+                };
+
+                const itemsToProcess = req.itemDetails.items || [{ productId: req.itemDetails.productId, quantity: req.itemDetails.quantity || 1 }];
+                console.log("📦 Items to process:", itemsToProcess);
+
+                if (itemsToProcess.length === 0) {
+                    addToast("Nenhum item para dividir.", "error");
+                    return;
+                }
+
+                let successCount = 0;
+                for (const item of itemsToProcess) {
+                    // Filter out 'cart-total' nonsense if it crept in, but Menu.jsx should send real IDs now.
+                    if (item.productId === 'cart-total') continue;
+
+                    const success = await processSingleItem(item.productId, item.quantity);
+                    if (success) successCount++;
+                }
+
+                if (successCount > 0) {
+                    addToast(`Você aceitou dividir ${successCount} iten(s)!`, 'success');
+                    // Send Response
+                    await api.sendSplitResponse(
+                        req.requesterId,
+                        'accepted',
+                        user.name || 'Alguém'
+                    );
+                } else {
+                    addToast("Falha ao processar divisão (Erros de validação).", "error");
+                }
             }
         } catch (e) {
-            console.error(e);
-            alert("Erro ao processar divisão.");
+            console.error("Critical Error processing split:", e);
+            addToast("Erro crítico ao processar solicitação.", "error");
         }
     };
 
-    const handleDecline = () => {
+    const handleDecline = async () => {
+        if (!incomingRequest) return;
+        const req = { ...incomingRequest };
         setIncomingRequest(null);
-        // Optional: Broadcast decline
+
+        try {
+            if (req.type === 'join_order') {
+                console.log("🚫 Sending Reject Response to User:", req.requesterId);
+                await api.sendSplitResponse(
+                    req.requesterId, // Target the ORIGINAL Requester
+                    'rejected',
+                    user.name || 'Alguém'
+                );
+            }
+            addToast("Você recusou a divisão.", "info");
+        } catch (e) {
+            console.error("Error declining request", e);
+        }
     };
 
     return (

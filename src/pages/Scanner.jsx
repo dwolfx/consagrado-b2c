@@ -3,6 +3,7 @@ import { X, Martini, Keyboard } from 'lucide-react';
 import { api } from '../services/api';
 import { useState } from 'react';
 import { useTableContext } from '../context/TableContext';
+import { useToast } from '../context/ToastContext';
 
 const Scanner = () => {
     const navigate = useNavigate();
@@ -26,7 +27,7 @@ const Scanner = () => {
                 setTableId(validTableId); // Context handles localstorage
                 navigate('/');
             } else {
-                alert('Nenhuma mesa encontrada no sistema para simular.');
+                addToast('Nenhuma mesa encontrada no sistema para simular.', 'error');
             }
         } catch (error) {
             console.error("Simulation error", error);

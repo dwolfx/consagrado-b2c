@@ -4,10 +4,13 @@ import { useState, useEffect } from 'react';
 import { api, supabase } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useTablePresence } from '../hooks/useTablePresence';
+import { useToast } from '../context/ToastContext';
+import SplitItemModal from '../components/SplitItemModal';
 
 const TabDetail = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { addToast } = useToast();
     const { onlineUsers } = useTablePresence();
     const [loading, setLoading] = useState(true);
     const [orders, setOrders] = useState([]);
@@ -79,47 +82,95 @@ const TabDetail = () => {
     const [splitItem, setSplitItem] = useState(null);
     const [selectedUsersToSplit, setSelectedUsersToSplit] = useState([]);
 
+    const [isEditingSplit, setIsEditingSplit] = useState(false);
+    const [relatedSplitOrders, setRelatedSplitOrders] = useState([]);
+
     const handleItemClick = (item) => {
-        // Only allow splitting unpaid pending/delivered items
+        // Only allow splitting unpaid active items
         if (item.status === 'paid') return;
+
+        // Check if this item is ALREADY part of a split
+        // Heuristic: Name starts with digit + "/" + digit => "1/2 Pizza"
+        const isSplit = /^\d+\/\d+\s/.test(item.name);
+
+        if (isSplit) {
+            // Find ALL related orders for this split group
+            // Match by product_id AND Clean Name AND Price (approx) OR just items that look like siblings
+            // Robust: Same product_id, same created_at (± seconds), same name pattern
+            // For MVP: Filter visibleOrders by same product_id and same Name
+            const siblings = visibleOrders.filter(o =>
+                o.product_id === item.product_id &&
+                o.name === item.name &&
+                Math.abs(o.price - item.price) < 0.01 // float Safe
+            );
+
+            // If we found the family
+            if (siblings.length > 0) {
+                const siblingUserIds = siblings.map(s => s.ordered_by);
+                setSelectedUsersToSplit(siblingUserIds);
+                setRelatedSplitOrders(siblings);
+                setIsEditingSplit(true);
+                setSplitItem(item); // One of them serves as proxy
+                return;
+            }
+        }
+
+        // Normal New Split
         setSplitItem(item);
-        setSelectedUsersToSplit([]);
+        setSelectedUsersToSplit([user?.id]); // Default to self for new split
+        setIsEditingSplit(false);
+        setRelatedSplitOrders([]);
     };
 
     const toggleUserSelection = (uid) => {
         if (selectedUsersToSplit.includes(uid)) {
+            // Prevent removing ONLY user? No, if 0 users, button disabled.
             setSelectedUsersToSplit(prev => prev.filter(id => id !== uid));
         } else {
             setSelectedUsersToSplit(prev => [...prev, uid]);
         }
     };
 
-    const executeSplit = async () => {
-        if (!splitItem || selectedUsersToSplit.length === 0) return;
+    const handleModalConfirm = async (itemFromModal, finalSelectedUsers) => {
+        if (!itemFromModal || finalSelectedUsers.length === 0) return;
 
-        // MVP: Send Request to FIRST selected user (Simpler flow for now if 1 target)
-        // If multiple targets, we'd need multiple accepts or a voting system.
-        // User said "Quem estiver recebendo o pedido pra dividir precisa ACEITAR".
-        // Assuming 1 target for simplicity or broadcasting to all.
+        console.log("🚩 [TabDetail] Confirming Split:", { itemFromModal, finalSelectedUsers, isEditingSplit });
 
-        // We will broadcast to ALL targets.
-        // The first one to 'Accept' will trigger the split (Race condition acceptable for MVP).
-        // Or better: Each logic runs independently? No, we need 1 delete.
-        // Let's assume the Receiver's Accept triggers the actual API call.
+        if (isEditingSplit) {
+            // REDISTRIBUTE
+            await api.redistributeOrder(relatedSplitOrders, finalSelectedUsers);
+            addToast("Divisão atualizada!", "success");
+        } else {
+            // NEW SPLIT REQUEST
+            await api.requestSplit(itemFromModal, finalSelectedUsers, user.name || 'Alguém', user.id);
+            addToast("Solicitação enviada!", "success");
+        }
 
-        await api.requestSplit(splitItem, selectedUsersToSplit, user.name || 'Alguém', user.id);
-
-        alert("Solicitação enviada!");
         setSplitItem(null);
+        setIsEditingSplit(false);
+        setRelatedSplitOrders([]);
     };
 
     // Filter out internal notification items AND paid items (as requested only unpaid active items)
     // Also filtering out faulty zero-price items from demo data
-    const visibleOrders = orders.filter(o =>
-        o.name !== '🔔 CHAMAR GARÇOM' &&
-        o.status !== 'paid' &&
-        o.price > 0
-    );
+    // DEBUG: Log all orders to see if split item is present but filtered
+    console.log("📊 TabDetail Raw Orders:", orders);
+
+    const visibleOrders = orders.filter(o => {
+        const price = Number(o.price);
+        const name = o.name || 'Unnamed';
+
+        const isInternal = name === '🔔 CHAMAR GARÇOM';
+        const isPaid = o.status === 'paid';
+        const isPricePositive = price > 0;
+
+        const isVisible = !isInternal && !isPaid && isPricePositive;
+
+        if (!isVisible) {
+            console.log(`Hidden Order [${name}]:`, { isInternal, isPaid, price, rawPrice: o.price });
+        }
+        return isVisible;
+    });
 
     // Split Lists
     const myOrdersList = visibleOrders.filter(o => o.ordered_by === user?.id);
@@ -228,76 +279,19 @@ const TabDetail = () => {
 
                 {/* SPLIT MODAL */}
                 {splitItem && (
-                    <div style={{
-                        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 9999,
-                        display: 'flex', alignItems: 'end', justifyContent: 'center'
-                    }} onClick={() => setSplitItem(null)}>
-                        <div
-                            onClick={e => e.stopPropagation()}
-                            style={{
-                                background: 'var(--bg-secondary)', width: '100%', maxWidth: '500px',
-                                borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
-                                padding: '1.5rem', animation: 'slideUp 0.3s'
-                            }}
-                        >
-                            <h3 style={{ marginBottom: '0.5rem' }}>Dividir Item</h3>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                                Com quem você quer dividir <strong>{splitItem.name}</strong>?
-                            </p>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto' }}>
-                                {onlineUsers.filter(u => u.id !== user.id).map(u => {
-                                    const isSelected = selectedUsersToSplit.includes(u.id);
-                                    return (
-                                        <div
-                                            key={u.id}
-                                            onClick={() => toggleUserSelection(u.id)}
-                                            style={{
-                                                display: 'flex', alignItems: 'center', gap: '1rem',
-                                                padding: '1rem', borderRadius: '12px',
-                                                background: isSelected ? 'rgba(99, 102, 241, 0.2)' : 'var(--bg-tertiary)',
-                                                border: isSelected ? '1px solid var(--primary)' : '1px solid transparent',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            <div style={{
-                                                width: '20px', height: '20px', borderRadius: '50%',
-                                                border: '2px solid var(--text-secondary)',
-                                                background: isSelected ? 'var(--primary)' : 'transparent',
-                                                borderColor: isSelected ? 'var(--primary)' : 'var(--text-secondary)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                            }}>
-                                                {isSelected && <div style={{ width: '8px', height: '8px', background: 'white', borderRadius: '50%' }} />}
-                                            </div>
-                                            <img
-                                                src={u.avatar_url}
-                                                style={{ width: '40px', height: '40px', borderRadius: '50%' }}
-                                            />
-                                            <span style={{ fontWeight: '500' }}>{u.name}</span>
-                                        </div>
-                                    );
-                                })}
-                                {onlineUsers.filter(u => u.id !== user.id).length === 0 && (
-                                    <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '1rem' }}>
-                                        Ninguém mais na mesa :(
-                                    </p>
-                                )}
-                            </div>
-
-                            <button
-                                onClick={executeSplit}
-                                disabled={selectedUsersToSplit.length === 0}
-                                className="btn btn-primary"
-                                style={{ marginTop: '1.5rem', width: '100%', padding: '1rem', opacity: selectedUsersToSplit.length === 0 ? 0.5 : 1 }}
-                            >
-                                Confirmar Divisão (1/{selectedUsersToSplit.length + 1})
-                            </button>
-                        </div>
-                    </div>
+                    <SplitItemModal
+                        item={splitItem}
+                        currentUser={user}
+                        onlineUsers={onlineUsers}
+                        initialSelectedUsers={selectedUsersToSplit}
+                        onClose={() => {
+                            setSplitItem(null);
+                            setIsEditingSplit(false);
+                        }}
+                        onConfirm={handleModalConfirm}
+                        confirmLabel={isEditingSplit ? 'Atualizar Divisão' : 'Confirmar Divisão'}
+                    />
                 )}
-                <style>{`
-                    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-                `}</style>
 
                 {/* Pedidos da Mesa (Toggle) */}
                 {othersOrdersList.length > 0 && (
@@ -372,7 +366,7 @@ const TabDetail = () => {
                 display: 'flex', gap: '1rem', justifyContent: 'center', alignItems: 'center'
             }}>
                 <button
-                    onClick={() => alert("Garçom chamado!")}
+                    onClick={() => addToast("Garçom chamado!", "success")}
                     className="btn btn-secondary"
                     style={{ width: 'auto', padding: '0.75rem', fontSize: '0.8rem' }}
                 >

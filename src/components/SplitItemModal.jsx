@@ -6,14 +6,34 @@ const SplitItemModal = ({
     currentUser,
     onlineUsers,
     onClose,
-    onConfirm
+    onConfirm,
+    initialSelectedUsers = [],
+    confirmLabel = 'Confirmar Divisão'
 }) => {
-    const [selectedUsers, setSelectedUsers] = useState([currentUser.id]); // Default to self
+    // Safeguard hook initialization
+    const safeUser = currentUser || { id: 'guest', name: 'Você' };
+
+    // Initialize with provided selection or default to self
+    const [selectedUsers, setSelectedUsers] = useState(
+        (initialSelectedUsers && initialSelectedUsers.length > 0)
+            ? initialSelectedUsers
+            : [safeUser.id]
+    );
+
+    // DEBUG FLAG
+    React.useEffect(() => {
+        console.log('🚩 [SplitItemModal] Mounted with item:', item);
+        console.log('🚩 [SplitItemModal] Initial Users:', initialSelectedUsers);
+    }, [item, initialSelectedUsers]);
+
+    if (!item) return null;
+
+    const safeOnlineUsers = Array.isArray(onlineUsers) ? onlineUsers : [safeUser];
+    const itemPrice = typeof item.price === 'number' ? item.price : 0;
 
     const toggleUser = (userId) => {
         setSelectedUsers(prev => {
             if (prev.includes(userId)) {
-                // Prevent unselecting if it's the only one? No, allow it but disable confirm button
                 return prev.filter(id => id !== userId);
             } else {
                 return [...prev, userId];
@@ -27,9 +47,7 @@ const SplitItemModal = ({
     };
 
     const selectAll = () => {
-        const allIds = onlineUsers.map(u => u.id);
-        // If all are already selected, deselect all (except self maybe?) -> Toggle logic
-        // But requested is "Dividir com todos". So simple Select All.
+        const allIds = safeOnlineUsers.map(u => u?.id).filter(Boolean);
         setSelectedUsers(allIds);
     };
 
@@ -49,22 +67,22 @@ const SplitItemModal = ({
                 margin: 0
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ fontSize: '1.2rem', margin: 0 }}>Dividir Item?</h3>
+                    <h3 style={{ fontSize: '1.2rem', margin: 0 }}>Dividir Pedido?</h3>
                     <button onClick={onClose} className="btn-ghost" style={{ padding: '8px' }}>
                         <X size={20} />
                     </button>
                 </div>
 
                 <div style={{ padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 'bold' }}>{item.name}</span>
+                    <span style={{ fontWeight: 'bold' }}>{item.name || 'Item'}</span>
                     <span style={{ color: 'var(--primary)' }}>
-                        {item.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        {itemPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
                 </div>
 
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Quem vai consumir?</p>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Quem vai pagar?</p>
                         <button onClick={selectAll} style={{
                             background: 'none', border: 'none', color: 'var(--primary)',
                             fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer'
@@ -73,49 +91,62 @@ const SplitItemModal = ({
                         </button>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: '0.75rem' }}>
-                        {onlineUsers.map(u => {
-                            const isSelected = selectedUsers.includes(u.id);
-                            const isSelf = u.id === currentUser.id;
+                    <div style={{ marginTop: '0.5rem', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(68px, 1fr))', gap: '0.75rem' }}>
+                            {safeOnlineUsers.map(u => {
+                                if (!u) return null;
+                                const isSelected = selectedUsers.includes(u.id);
+                                const isSelf = u.id === safeUser.id;
+                                const splitPrice = itemPrice / (selectedUsers.length || 1);
 
-                            return (
-                                <div key={u.id} onClick={() => toggleUser(u.id)} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                                    <div style={{
-                                        width: '48px', height: '48px', borderRadius: '50%', overflow: 'hidden',
-                                        border: isSelected ? '3px solid var(--primary)' : '3px solid transparent',
-                                        opacity: isSelected ? 1 : 0.5,
-                                        transition: 'all 0.2s'
-                                    }}>
-                                        <img src={u.avatar_url || `https://ui-avatars.com/api/?name=${u.name}&background=random`} alt={u.name} style={{ width: '100%', height: '100%' }} />
+                                return (
+                                    <div key={u.id || Math.random()} onClick={() => u.id && toggleUser(u.id)} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative' }}>
+                                        <div style={{
+                                            width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden',
+                                            border: isSelected ? '3px solid var(--primary)' : '3px solid transparent',
+                                            opacity: isSelected ? 1 : 0.5,
+                                            transition: 'all 0.2s',
+                                            boxShadow: isSelected ? '0 4px 12px var(--primary-glow)' : 'none'
+                                        }}>
+                                            <img src={u.avatar_url || `https://ui-avatars.com/api/?name=${u.name || 'User'}&background=random`} alt={u.name} style={{ width: '100%', height: '100%' }} />
+                                        </div>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: isSelected ? 'bold' : 'normal', textAlign: 'center', color: isSelected ? 'white' : 'var(--text-secondary)' }}>
+                                            {isSelf ? 'Eu' : (u.name || 'User').split(' ')[0]}
+                                        </span>
+                                        {isSelected && (
+                                            <div style={{
+                                                position: 'absolute', top: '-6px', right: '-6px',
+                                                background: '#22c55e', color: 'white',
+                                                fontSize: '0.65rem', fontWeight: 'bold',
+                                                padding: '2px 6px', borderRadius: '10px',
+                                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                            }}>
+                                                {splitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            </div>
+                                        )}
                                     </div>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: isSelected ? 'bold' : 'normal', textAlign: 'center' }}>
-                                        {isSelf ? 'Eu' : u.name.split(' ')[0]}
-                                    </span>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
 
-                <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {selectedUsers.length > 1 && (
-                        <div style={{
-                            textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)',
-                            background: 'var(--bg-tertiary)', padding: '6px', borderRadius: '8px'
-                        }}>
-                            Cada um paga: <strong>{(item.price / selectedUsers.length).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</strong>
-                        </div>
-                    )}
-
-                    <button
-                        onClick={handleConfirm}
-                        disabled={selectedUsers.length === 0}
-                        className="btn btn-primary"
-                        style={{ width: '100%', justifyContent: 'center', padding: '1rem', fontSize: '1rem' }}
-                    >
-                        Adicionar {selectedUsers.length > 1 ? `para ${selectedUsers.length}` : ''} <Check size={18} style={{ marginLeft: '8px' }} />
-                    </button>
+                <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: '16px', marginBottom: '1rem', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Total por pessoa</p>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>
+                        {(itemPrice / (selectedUsers.length || 1)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </p>
                 </div>
+
+
+                <button
+                    onClick={handleConfirm}
+                    disabled={selectedUsers.length === 0}
+                    className="btn btn-primary"
+                    style={{ width: '100%', justifyContent: 'center', padding: '1rem', fontSize: '1.1rem' }}
+                >
+                    {confirmLabel} <Check size={20} style={{ marginLeft: '8px' }} />
+                </button>
 
             </div>
             <style>{`

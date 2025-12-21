@@ -3,10 +3,12 @@ import { ArrowLeft, CheckCircle, AlertTriangle, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useTableContext } from '../context/TableContext';
 
 const Payment = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
+    const { setTableId } = useTableContext();
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(true);
     const [subtotal, setSubtotal] = useState(0);
@@ -91,8 +93,8 @@ const Payment = () => {
 
         setSuccess(true);
         setLoading(false);
-        // Clear table session local
-        localStorage.removeItem('my_table_id');
+        // We do NOT clear localStorage here yet, to keep the receipt "branded"
+        // We will clear it when they click "Back to Home"
     };
 
     if (success) {
@@ -144,7 +146,10 @@ const Payment = () => {
                         Mesa encerrada. Obrigado pela preferência!
                     </p>
 
-                    <button onClick={() => navigate('/')} className="btn btn-primary" style={{ marginTop: '1rem', width: '100%' }}>
+                    <button onClick={() => {
+                        setTableId(null);
+                        navigate('/');
+                    }} className="btn btn-primary" style={{ marginTop: '1rem', width: '100%' }}>
                         Voltar ao Início
                     </button>
                 </div>
