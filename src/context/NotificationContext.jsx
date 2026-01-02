@@ -56,7 +56,11 @@ export const NotificationProvider = ({ children }) => {
                     });
                 }
             })
-            .subscribe();
+            .subscribe((status) => {
+                console.log(`📡 [NotificationContext] User Channel Status (${user.id}):`, status);
+            });
+
+        console.log("🔌 [NotificationContext] Subscribing channels for:", { uid: user.id, tid: tableId });
 
         return () => {
             supabase.removeChannel(tableChannel);

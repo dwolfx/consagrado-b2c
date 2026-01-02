@@ -225,7 +225,7 @@ export const api = {
                         requesterId
                     }
                 });
-                setTimeout(() => supabase.removeChannel(channel), 1000);
+                // setTimeout(() => supabase.removeChannel(channel), 1000); // KEEP OPEN
             }
         });
         return true;
@@ -247,7 +247,7 @@ export const api = {
                         requesterId
                     }
                 });
-                setTimeout(() => supabase.removeChannel(channel), 1000);
+                // setTimeout(() => supabase.removeChannel(channel), 1000); // KEEP OPEN
             }
         });
         return true;
@@ -271,10 +271,10 @@ export const api = {
                 });
                 console.log("📤 split_response SENT.");
                 // Ensure message has time to fly before kill
-                setTimeout(() => {
+                /* setTimeout(() => {
                     console.log("🔌 Removing channel...");
                     supabase.removeChannel(channel);
-                }, 1000);
+                }, 1000); */
             } else {
                 console.warn(`⚠️ Channel subscription failed or timed out: ${statusCode}`);
             }
