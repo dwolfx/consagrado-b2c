@@ -112,20 +112,24 @@ export const NotificationProvider = ({ children }) => {
                     const totalParts = req.itemDetails.totalParts || 2; // Default to 2 if not sent
                     const splitPrice = realPrice / totalParts;
                     const splitName = totalParts > 1 ? `1/${totalParts} ${dbProduct.name}` : dbProduct.name;
+                    const debugName = `${splitName} [R$${splitPrice.toFixed(2)}]`; // DEBUG
 
                     console.log(`🧮 Math: ${realPrice} / ${totalParts} = ${splitPrice}`);
 
-                    // 3. Create Order
-                    // We loop qty times if needed, or just insert one line with qty?
-                    // Usually split means 1 unit split. If I have 2 beers, do I split BOTH?
-                    // User request implies "splitting the bill", so yes, split everything.
-
+                    // 3. Create Order with FULL METADATA
                     const newOrder = await api.addOrder(req.itemDetails.tableId, {
-                        productId: dbProduct.id, // Link to real product for analytics
+                        productId: dbProduct.id, // Back to Real ID (Metadata explains price diff)
                         name: splitName,
                         price: splitPrice,
-                        quantity: qty, // Keep quantity from cart
-                        orderedBy: user.id
+                        quantity: qty,
+                        orderedBy: user.id,
+
+                        // Metadata
+                        isSplit: true,
+                        splitParts: totalParts,
+                        originalPrice: realPrice,
+                        splitRequester: req.requesterId,
+                        splitParticipants: [req.requesterId, req.targetUserId] // Basic 2-way split context
                     });
 
                     return !!newOrder;

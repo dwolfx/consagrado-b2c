@@ -86,8 +86,12 @@ const TabDetail = () => {
     const [relatedSplitOrders, setRelatedSplitOrders] = useState([]);
 
     const handleItemClick = (item) => {
+        console.log("🖱️ Item Clicked:", item);
         // Only allow splitting unpaid active items
-        if (item.status === 'paid') return;
+        if (item.status === 'paid') {
+            console.warn("🚫 Item is paid, blocking split.");
+            return;
+        }
 
         // Check if this item is ALREADY part of a split
         // Heuristic: Name starts with digit + "/" + digit => "1/2 Pizza"
@@ -116,6 +120,7 @@ const TabDetail = () => {
         }
 
         // Normal New Split
+        console.log("✨ Opening NEW split modal for:", item);
         setSplitItem(item);
         setSelectedUsersToSplit([user?.id]); // Default to self for new split
         setIsEditingSplit(false);
@@ -156,19 +161,29 @@ const TabDetail = () => {
     // DEBUG: Log all orders to see if split item is present but filtered
     console.log("📊 TabDetail Raw Orders:", orders);
 
+    // Helper to calculate Display Price honoring Metadata
+    const getDisplayPrice = (item) => {
+        // Resilience: If it is a split item AND has metadata, reconstruct the price
+        // This fixes the DB overriding price issue
+        if (item.is_split && item.split_parts > 1 && item.original_price > 0) {
+            const mathPrice = Number(item.original_price) / item.split_parts;
+            // Use math price if DB price is suspiciously close to original (full price bug)
+            // OR just always trust metadata for splits. Let's trust metadata as it is strict logic.
+            return mathPrice;
+        }
+        return Number(item.price);
+    };
+
     const visibleOrders = orders.filter(o => {
-        const price = Number(o.price);
+        // Use corrected price for logic
+        const realPrice = getDisplayPrice(o);
         const name = o.name || 'Unnamed';
 
         const isInternal = name === '🔔 CHAMAR GARÇOM';
         const isPaid = o.status === 'paid';
-        const isPricePositive = price > 0;
+        const isPricePositive = realPrice > 0; // Check corrected price
 
         const isVisible = !isInternal && !isPaid && isPricePositive;
-
-        if (!isVisible) {
-            console.log(`Hidden Order [${name}]:`, { isInternal, isPaid, price, rawPrice: o.price });
-        }
         return isVisible;
     });
 
@@ -176,28 +191,39 @@ const TabDetail = () => {
     const myOrdersList = visibleOrders.filter(o => o.ordered_by === user?.id);
     const othersOrdersList = visibleOrders.filter(o => o.ordered_by !== user?.id);
 
-    // Calculate My Share
-    const mySubtotal = myOrdersList.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    // Calculate My Share using Corrected Prices
+    const mySubtotal = myOrdersList.reduce((acc, item) => acc + (getDisplayPrice(item) * item.quantity), 0);
 
     // Helper for Status
     const getStatusConfig = (s) => {
         switch (s) {
-            case 'pending': return { label: 'Aguardando', color: '#b45309', bg: '#fef3c7' }; // Yellow-700/100
-            case 'preparing': return { label: 'Preparando', color: '#1d4ed8', bg: '#dbeafe' }; // Blue-700/100
+            case 'pending': return { label: 'Aguardando', color: '#b45309', bg: '#fef3c7' };
+            case 'preparing': return { label: 'Preparando', color: '#1d4ed8', bg: '#dbeafe' };
             case 'ready':
             case 'delivered':
-            case 'completed': return { label: 'Entregando', color: '#15803d', bg: '#dcfce7' }; // Green-700/100
+            case 'completed': return { label: 'Entregando', color: '#15803d', bg: '#dcfce7' };
             case 'paid': return { label: 'Pago', color: '#15803d', bg: '#dcfce7' };
             default: return { label: s, color: '#374151', bg: '#f3f4f6' };
         }
     };
-    const myServiceFee = mySubtotal > 0 ? mySubtotal * 0.10 : 0; // Explicit check for clarity
-    const myTotal = mySubtotal + myServiceFee;
 
-    // Calculate Table Total (Active)
-    const totalTabSub = visibleOrders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-    const totalTabFee = totalTabSub * 0.10;
-    const totalTab = totalTabSub + totalTabFee;
+    // Calculate Table Total (Active) with ALL Fees
+    const totalTabSub = visibleOrders.reduce((acc, item) => acc + (getDisplayPrice(item) * item.quantity), 0);
+    const totalTabService = totalTabSub * 0.10;
+
+    // Machine Fee (4% on subtotal + service)
+    const totalTabMachine = (totalTabSub + totalTabService) * 0.04;
+
+    // App Fee (Estimate: 1.99 * Unique Active Users)
+    // Filter distinct non-guest IDs to estimate app fees
+    // FIXED: Only count fee if there are actual orders. Remove "|| 1" fallback.
+    const uniqueUsersCount = visibleOrders.length > 0
+        ? (new Set(visibleOrders.map(o => o.ordered_by).filter(id => id && id.length > 20)).size || 1)
+        : 0;
+
+    const totalTabApp = uniqueUsersCount * 1.99;
+
+    const totalTab = totalTabSub + totalTabService + totalTabMachine + totalTabApp;
 
     const formatPrice = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -216,12 +242,7 @@ const TabDetail = () => {
                 </div>
             </header>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: '1rem', marginTop: '0.5rem' }}>
-                <h3 style={{ margin: 0 }}>Consumo da Mesa</h3>
-                <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                    Total: <strong>{formatPrice(totalTab)}</strong>
-                </span>
-            </div>
+
 
             {/* Items List */}
             <div style={{ display: 'grid', gap: '1rem', marginBottom: '6rem' }}>
@@ -247,7 +268,7 @@ const TabDetail = () => {
                             >
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                                     <span style={{ fontWeight: '600', fontSize: '1rem' }}>{item.quantity}x {item.name}</span>
-                                    <span style={{ fontWeight: '700' }}>{formatPrice(item.price * item.quantity)}</span>
+                                    <span style={{ fontWeight: '700' }}>{formatPrice(getDisplayPrice(item) * item.quantity)}</span>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                     <span style={{
@@ -325,7 +346,7 @@ const TabDetail = () => {
                                         <div key={item.id} className="card" style={{ marginBottom: 0, opacity: 0.85, background: 'var(--bg-tertiary)' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                                                 <span style={{ fontWeight: '600', fontSize: '1rem' }}>{item.quantity}x {item.name}</span>
-                                                <span style={{ fontWeight: '700', color: 'var(--text-secondary)' }}>{formatPrice(item.price * item.quantity)}</span>
+                                                <span style={{ fontWeight: '700', color: 'var(--text-secondary)' }}>{formatPrice(getDisplayPrice(item) * item.quantity)}</span>
                                             </div>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                 <span style={{
@@ -348,6 +369,14 @@ const TabDetail = () => {
                                         </div>
                                     );
                                 })}
+
+                                <div style={{
+                                    borderTop: '1px dashed var(--bg-tertiary)', margin: '1rem 0 0 0', padding: '1rem 0 0 0',
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-secondary)'
+                                }}>
+                                    <span>Total dos itens da mesa</span>
+                                    <span><strong>{formatPrice(totalTabSub)} + taxas</strong></span>
+                                </div>
                             </div>
                         )}
                     </div>

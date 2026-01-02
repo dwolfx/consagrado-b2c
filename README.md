@@ -32,7 +32,10 @@ Interface projetada para ambientes noturnos:
 1.  **Check-in Mágico**: QR Code na mesa abre a comanda instantaneamente.
 2.  **Comanda Inteligente**:
     *   Vê o que está bebendo em tempo real.
-    *   **Divisão Automatizada**: O app calcula sua parte do vinho ou balde.
+    *   **Divisão Resiliente**:
+        *   **Smart Metadata**: Utiliza colunas `split_parts` e `original_price` para garantir integridade.
+        *   **Dynamic Rendering**: Frontend calcula o preço exibido baseado em metadados, ignorando inconsistências de banco.
+        *   **Full Traceability**: Rastreia `split_requester` e `split_participants` para auditoria completa.
     *   **Detecção de Mesa**: Mostra quantas pessoas estão na mesa em tempo real.
 3.  **Pagamento & Saída**:
     *   Paga via PIX/Cartão pelo app.

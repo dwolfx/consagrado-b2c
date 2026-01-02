@@ -80,7 +80,14 @@ export const api = {
                 price: parseFloat(orderData.price), // Ensure Number
                 quantity: orderData.quantity,
                 status: 'pending',
-                ordered_by: (orderData.orderedBy || '').toLowerCase() // Ensure UUID format
+                ordered_by: (orderData.orderedBy || '').toLowerCase(), // Ensure UUID format
+
+                // Split Metadata
+                is_split: !!orderData.isSplit,
+                split_parts: orderData.splitParts || 1,
+                original_price: orderData.originalPrice || null,
+                split_requester: orderData.splitRequester || null,
+                split_participants: orderData.splitParticipants || null
             }])
             .select();
 
@@ -161,6 +168,39 @@ export const api = {
 
         if (error) console.error('Error clearing table', error);
         return !error;
+    },
+
+    // Payment & History
+    payUserOrders: async (tableId, userId) => {
+        console.log(`💰 Paying orders for User ${userId} at Table ${tableId}`);
+        const { data, error } = await supabase
+            .from('orders')
+            .update({ status: 'paid' })
+            .eq('table_id', tableId)
+            .eq('ordered_by', userId)
+            .neq('status', 'paid') // Only pay unpaid
+            .select();
+
+        if (error) console.error("Error paying orders", error);
+        return data;
+    },
+
+    getUserHistory: async (userId) => {
+        console.log(`📜 Fetching history for User ${userId}`);
+        const { data, error } = await supabase
+            .from('orders')
+            .select(`
+                *,
+                table:tables (
+                    establishment:establishments(*)
+                )
+            `)
+            .eq('ordered_by', userId)
+            .eq('status', 'paid')
+            .order('created_at', { ascending: false });
+
+        if (error) console.error("Error fetching history", error);
+        return data || [];
     },
 
     // Splitting
@@ -256,17 +296,29 @@ export const api = {
 
         // 2. Create new fractional orders
         const totalParts = targetUserIds.length;
-        const newPrice = originalOrder.price / totalParts;
-        const newName = `1/${totalParts} ${originalOrder.name.replace(/^\d+\/\d+\s/, '')}`; // Avoid "1/2 1/2 Pizza" recursion
+
+        // Robust Price: Use existing original_price metadata if available, or current price as base
+        const basePrice = originalOrder.original_price ? Number(originalOrder.original_price) : Number(originalOrder.price);
+        const newPrice = basePrice / totalParts;
+
+        const cleanName = originalOrder.name.replace(/^[\d.]+\/[\d.]+\s/, ''); // Regex to clean "1/2 "
+        const newName = `1/${totalParts} ${cleanName}`;
 
         const newOrders = targetUserIds.map(userId => ({
             table_id: originalOrder.table_id,
-            product_id: originalOrder.product_id,
+            product_id: originalOrder.product_id, // Keep Real ID
             name: newName,
             price: newPrice,
-            quantity: originalOrder.quantity, // Usually 1 for splits
+            quantity: originalOrder.quantity, // usually 1
             status: originalOrder.status,
-            ordered_by: userId
+            ordered_by: userId,
+
+            // Metadata Persistence
+            is_split: true,
+            split_parts: totalParts,
+            original_price: basePrice,
+            split_requester: originalOrder.ordered_by, // Original owner is requester
+            split_participants: targetUserIds
         }));
 
         const { error: insError } = await supabase.from('orders').insert(newOrders);
@@ -302,19 +354,30 @@ export const api = {
 
         // 2. Create NEW orders
         const totalParts = targetUserIds.length;
-        const newPrice = totalAmount / totalParts;
-        // Clean name: remove existing "1/X " prefix if present to avoid "1/2 1/3 Pizza"
-        const cleanName = originalOrder.name.replace(/^\d+\/\d+\s/, '');
+
+        // Robust Price Calculation: Use stored original_price if available, otherwise reconstruct
+        const basePrice = originalOrder.original_price ? Number(originalOrder.original_price) : totalAmount;
+        const newPrice = basePrice / totalParts;
+
+        // Clean name logic
+        const cleanName = originalOrder.name.replace(/^\d+\/\d+\s/, '').replace(/\s\[R\$.*\]/, ''); // Remove old prefix and debugs
         const newName = `1/${totalParts} ${cleanName}`;
 
         const newOrders = targetUserIds.map(userId => ({
             table_id: originalOrder.table_id,
-            product_id: originalOrder.product_id,
+            product_id: originalOrder.product_id, // Keep Real ID
             name: newName,
             price: newPrice,
             quantity: originalOrder.quantity,
             status: originalOrder.status,
-            ordered_by: userId
+            ordered_by: userId,
+
+            // Metadata Persistence
+            is_split: true,
+            split_parts: totalParts,
+            original_price: basePrice,
+            split_requester: originalOrder.split_requester || originalOrder.ordered_by, // Keep original requester or inherit
+            split_participants: targetUserIds
         }));
 
         const { error: insError } = await supabase.from('orders').insert(newOrders);

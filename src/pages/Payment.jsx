@@ -12,6 +12,7 @@ const Payment = () => {
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(true);
     const [subtotal, setSubtotal] = useState(0);
+    const [myOrders, setMyOrders] = useState([]); // Store items for review
 
     // Logic State
     const [serviceFeePercent, setServiceFeePercent] = useState(10); // 8, 10, 13
@@ -19,7 +20,7 @@ const Payment = () => {
     const [showRemoveModal, setShowRemoveModal] = useState(false);
     const [feeRemoved, setFeeRemoved] = useState(false);
 
-    const appFee = 1.99;
+    // const appFee = 1.99; // Moved to conditional logic
 
     useEffect(() => {
         const loadPaymentData = async () => {
@@ -35,17 +36,30 @@ const Payment = () => {
                 const orders = tableData?.orders || [];
 
                 // Filter my orders (Using UUID now!)
+                // Filter my orders: UUID match AND NOT PAID
                 const myId = user?.id;
                 const myOrders = orders.filter(o =>
-                    o.ordered_by === myId ||                // Match UUID
-                    o.ordered_by === myId // Redundant check removed, strict UUID match
+                    (o.ordered_by === myId) &&
+                    (o.status !== 'paid') // CRITICAL: Exclude previously paid items
                 );
 
-                // Fallback for demo specific names if UUID fails or old data
-                // const myOrders = orders.filter(o => o.ordered_by === myId); 
+                // Helper to ensure split price correctness
+                const getDisplayPrice = (item) => {
+                    if (item.is_split && item.split_parts > 1 && item.original_price > 0) {
+                        return Number(item.original_price) / item.split_parts;
+                    }
+                    return Number(item.price);
+                };
 
-                const myTotal = myOrders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+                const myTotal = myOrders.reduce((acc, item) => acc + (getDisplayPrice(item) * item.quantity), 0);
                 setSubtotal(myTotal);
+
+                // Store items with corrected price for display
+                const ordersWithCorrectedPrice = myOrders.map(o => ({
+                    ...o,
+                    price: getDisplayPrice(o) // Override price with calculated one for UI
+                }));
+                setMyOrders(ordersWithCorrectedPrice);
             } catch (error) {
                 console.error("Error loading payment info", error);
             } finally {
@@ -55,16 +69,21 @@ const Payment = () => {
         loadPaymentData();
     }, [user]); // user dependency to ensure name is ready
 
-    const calculateTotal = () => {
-        let fee = 0;
-        if (!feeRemoved) {
-            fee = subtotal * (serviceFeePercent / 100);
-        }
-        return subtotal + fee + appFee;
-    };
+    // Fees Logic
+    const [showFeeInfo, setShowFeeInfo] = useState(false);
+    const [showItemsInfo, setShowItemsInfo] = useState(false);
+    const applicableAppFee = subtotal > 0 ? 1.99 : 0;
 
-    const serviceFeeValue = subtotal * (serviceFeePercent / 100);
-    const total = calculateTotal();
+    // "Gorjeta" (Waitstaff Tip) - formerly serviceFee
+    const tipValue = subtotal * (serviceFeePercent / 100);
+    const displayedTip = feeRemoved ? 0 : tipValue;
+
+    // "Taxa de Serviço" (Operational = Machine 4% + App 1.99)
+    // Machine Fee applies to everything paid
+    const machineFeeValue = (subtotal + displayedTip) * 0.04;
+    const operationalFeeValue = machineFeeValue + applicableAppFee;
+
+    const total = subtotal + displayedTip + operationalFeeValue;
 
     const handleRemoveFee = () => {
         if (removeFeeReason.trim().length < 5) {
@@ -80,15 +99,10 @@ const Payment = () => {
         // Simulate payment delay
         await new Promise(r => setTimeout(r, 1500));
 
-        // Clear from Database (User Req: "Limpe tudo da mesa")
-        /* 
-           NOTE: In a real app, we wouldn't delete orders, just mark as 'paid'. 
-           But for this Demo flow, user asked to "Close/Clear" the table.
-           However, if we clear BEFORE showing Receipt, it's fine.
-        */
+        // Create History Record (Mark as Paid)
         const tableId = localStorage.getItem('my_table_id');
-        if (tableId) {
-            await api.clearTableOrders(tableId);
+        if (tableId && user?.id) {
+            await api.payUserOrders(tableId, user.id);
         }
 
         setSuccess(true);
@@ -175,25 +189,47 @@ const Payment = () => {
             <div className="card">
                 <h3 style={{ marginBottom: '1rem' }}>Resumo</h3>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-                    <span>Subtotal (Sua parte)</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-secondary)', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span>Subtotal (Sua parte)</span>
+                        <button
+                            onClick={() => setShowItemsInfo(true)}
+                            style={{
+                                background: 'var(--bg-tertiary)', border: 'none', borderRadius: '50%',
+                                width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '0.7rem', fontWeight: 'bold', color: 'var(--text-secondary)', cursor: 'pointer'
+                            }}>
+                            ?
+                        </button>
+                    </div>
                     <span>{subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </div>
 
-                {/* App Fee */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', color: 'var(--text-secondary)' }}>
-                    <span>Taxa do App (Fixo)</span>
-                    <span>{appFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                {/* Taxa de Serviço (Operational) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-secondary)', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span>Taxa de Serviço</span>
+                        <button
+                            onClick={() => setShowFeeInfo(true)}
+                            style={{
+                                background: 'var(--bg-tertiary)', border: 'none', borderRadius: '50%',
+                                width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: '0.7rem', fontWeight: 'bold', color: 'var(--text-secondary)', cursor: 'pointer'
+                            }}>
+                            ?
+                        </button>
+                    </div>
+                    <span>{operationalFeeValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </div>
 
-                {/* Service Fee Selection */}
+                {/* Gratificação Selection (Formerly Gorjeta) */}
                 <div style={{ marginBottom: '1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                        <span>Taxa de Serviço ({feeRemoved ? 'removida' : `${serviceFeePercent}%`})</span>
+                        <span>Gratificação da Equipe ({feeRemoved ? 'removida' : `${serviceFeePercent}%`})</span>
                         <span>
                             {feeRemoved
                                 ? 'R$ 0,00'
-                                : serviceFeeValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                                : tipValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
                             }
                         </span>
                     </div>
@@ -205,7 +241,7 @@ const Payment = () => {
                                     key={pct}
                                     onClick={() => setServiceFeePercent(pct)}
                                     className={`btn ${serviceFeePercent === pct ? 'btn-primary' : 'btn-secondary'}`}
-                                    style={{ padding: '0.5rem', fontSize: '0.9rem', width: 'auto', flex: 1, minHeight: 'unset' }}
+                                    style={{ padding: '0.5rem 0.25rem', fontSize: '0.8rem', width: 'auto', flex: 1, minHeight: '32px' }}
                                 >
                                     {pct}%
                                 </button>
@@ -219,7 +255,7 @@ const Payment = () => {
                                 onClick={() => setShowRemoveModal(true)}
                                 style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                             >
-                                Não pagar taxa de serviço
+                                Não pagar gratificação
                             </button>
                         </div>
                     ) : (
@@ -260,13 +296,13 @@ const Payment = () => {
                 }}>
                     <div className="card" style={{ width: '100%', maxWidth: '360px', margin: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                            <h3>Remover Taxa</h3>
+                            <h3>Remover Gratificação</h3>
                             <button onClick={() => setShowRemoveModal(false)} className="btn-ghost" style={{ width: 'auto' }}><X /></button>
                         </div>
 
                         <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'start' }}>
                             <AlertTriangle size={20} style={{ flexShrink: 0 }} />
-                            <p style={{ fontSize: '0.9rem' }}>A taxa de serviço vai integralmente para a equipe de atendimento.</p>
+                            <p style={{ fontSize: '0.9rem' }}>A gratificação vai integralmente para a equipe de atendimento.</p>
                         </div>
 
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>Por que deseja remover?</label>
@@ -284,6 +320,97 @@ const Payment = () => {
                             style={{ marginTop: '1rem', background: 'var(--danger)' }}
                         >
                             Confirmar Remoção
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* TAX INFO MODAL */}
+            {showFeeInfo && (
+                <div style={{
+                    position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)',
+                    display: 'flex', alignItems: 'end', justifyContent: 'center', zIndex: 110, padding: 0
+                }} onClick={() => setShowFeeInfo(false)}>
+                    <div style={{
+                        width: '100%', maxWidth: '480px',
+                        backgroundColor: 'var(--bg-secondary)',
+                        borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
+                        padding: '2rem', animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                        position: 'relative'
+                    }} onClick={e => e.stopPropagation()}>
+
+                        <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '2px', margin: '0 auto 2rem auto' }}></div>
+
+                        <h3 style={{ marginBottom: '1.5rem' }}>Entenda as Taxas</h3>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid var(--bg-tertiary)' }}>
+                            <span>Taxa Maquininha (4%)</span>
+                            <span>{machineFeeValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid var(--bg-tertiary)' }}>
+                            <span>Taxa do App (Fixo)</span>
+                            <span>{applicableAppFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem 0', fontWeight: 'bold' }}>
+                            <span>Total Taxa de Serviço</span>
+                            <span>{operationalFeeValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        </div>
+
+                        <button
+                            onClick={() => setShowFeeInfo(false)}
+                            className="btn btn-primary"
+                            style={{ marginTop: '1rem' }}>
+                            Entendi
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ITEMS INFO MODAL */}
+            {showItemsInfo && (
+                <div style={{
+                    position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)',
+                    display: 'flex', alignItems: 'end', justifyContent: 'center', zIndex: 110, padding: 0
+                }} onClick={() => setShowItemsInfo(false)}>
+                    <div style={{
+                        width: '100%', maxWidth: '480px',
+                        backgroundColor: 'var(--bg-secondary)',
+                        borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
+                        padding: '2rem', animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                        position: 'relative', maxHeight: '80vh', display: 'flex', flexDirection: 'column'
+                    }} onClick={e => e.stopPropagation()}>
+
+                        <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '2px', margin: '0 auto 1.5rem auto', flexShrink: 0 }}></div>
+
+                        <h3 style={{ marginBottom: '1rem', flexShrink: 0 }}>Seu Consumo</h3>
+
+                        <div style={{ overflowY: 'auto', flex: 1, marginBottom: '1rem' }}>
+                            {myOrders.length === 0 ? (
+                                <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>Nenhum item encontrado.</p>
+                            ) : (
+                                myOrders.map((item, idx) => (
+                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px dashed var(--bg-tertiary)' }}>
+                                        <div>
+                                            <span style={{ fontWeight: 'bold', marginRight: '0.5rem' }}>{item.quantity}x</span>
+                                            <span>{item.name}</span>
+                                        </div>
+                                        <span>{(item.price * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem 0', fontWeight: 'bold', borderTop: '2px solid var(--bg-tertiary)', flexShrink: 0 }}>
+                            <span>Total Itens</span>
+                            <span>{subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                        </div>
+
+                        <button
+                            onClick={() => setShowItemsInfo(false)}
+                            className="btn btn-primary"
+                            style={{ marginTop: '0.5rem', flexShrink: 0 }}>
+                            Fechar
                         </button>
                     </div>
                 </div>

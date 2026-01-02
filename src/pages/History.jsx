@@ -1,29 +1,56 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Calendar, CheckCircle } from 'lucide-react';
+import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const History = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const [historyGroups, setHistoryGroups] = useState([]);
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    const historyData = [
-        {
-            id: 1, place: "Bar do Zé", date: "27/10/2023", total: 148.50,
-            items: [
-                { name: "Cerveja Heineken 600ml", quantity: 3, price: 18.00 },
-                { name: "Batata Frita c/ Cheddar", quantity: 1, price: 32.00 },
-                { name: "Água sem Gás", quantity: 2, price: 5.00 },
-                { name: "Caipirinha Limão", quantity: 1, price: 25.00 }
-            ]
-        },
-        {
-            id: 2, place: "Pub O'Malleys", date: "20/10/2023", total: 98.89,
-            items: [
-                { name: "Pint Guinness", quantity: 2, price: 32.00 },
-                { name: "Fish and Chips", quantity: 1, price: 45.00 }
-            ]
-        },
-    ];
+    useEffect(() => {
+        const fetchHistory = async () => {
+            if (!user?.id) return;
+            const orders = await api.getUserHistory(user.id);
+
+            // Group by "Visit" (Simple heuristic: Date + Establishment + Table)
+            // Or simpler: Date + Establishment
+            const groups = {};
+
+            orders.forEach(order => {
+                // specific date string DD/MM/YYYY
+                const dateObj = new Date(order.created_at);
+                const dateKey = dateObj.toLocaleDateString('pt-BR');
+                const estabName = order.table?.establishment?.name || order.establishment?.name || 'Local Desconhecido';
+
+                // Composite Key
+                const key = `${dateKey}-${estabName}`;
+
+                if (!groups[key]) {
+                    groups[key] = {
+                        id: key,
+                        place: estabName,
+                        date: dateKey,
+                        timestamp: dateObj.getTime(), // for sorting
+                        items: [],
+                        total: 0
+                    };
+                }
+
+                groups[key].items.push(order);
+            });
+
+            // Convert to array and sort by latest
+            const sortedGroups = Object.values(groups).sort((a, b) => b.timestamp - a.timestamp);
+            setHistoryGroups(sortedGroups);
+            setLoading(false);
+        };
+
+        fetchHistory();
+    }, [user]);
 
     const openReceipt = (order) => setSelectedOrder(order);
     const closeReceipt = () => setSelectedOrder(null);
@@ -38,25 +65,37 @@ const History = () => {
             </header>
 
             <div style={{ display: 'grid', gap: '1rem' }}>
-                {historyData.map(item => {
-                    const itemSubtotal = item.items.reduce((acc, i) => acc + (i.price * i.quantity), 0);
-                    const itemTotal = itemSubtotal + (itemSubtotal * 0.1) + 1.99;
+                {loading ? <div style={{ textAlign: 'center', opacity: 0.7 }}>Carregando histórico...</div> :
+                    historyGroups.length === 0 ? <div style={{ textAlign: 'center', opacity: 0.7 }}>Nenhum pedido anterior.</div> :
+                        historyGroups.map(group => {
+                            const getHistoryItemPrice = (i) => {
+                                // Robustness: reuse split logic if recorded
+                                if (i.is_split && i.split_parts > 1 && i.original_price > 0) {
+                                    return Number(i.original_price) / i.split_parts;
+                                }
+                                return Number(i.price);
+                            };
 
-                    return (
-                        <div key={item.id} className="card" onClick={() => openReceipt(item)} style={{ cursor: 'pointer' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                                <h3 style={{ fontSize: '1.1rem', margin: 0 }}>{item.place}</h3>
-                                <span style={{ fontWeight: 'bold', color: 'var(--success)' }}>
-                                    {itemTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                </span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                <Calendar size={16} />
-                                {item.date}
-                            </div>
-                        </div>
-                    );
-                })}
+                            const itemSubtotal = group.items.reduce((acc, i) => acc + (getHistoryItemPrice(i) * i.quantity), 0);
+
+                            // Use stored metadata if checking specific receipt logic, but here generalized:
+                            const itemTotal = itemSubtotal * 1.04 + 1.99; // Approx (Taxa Serviço agrupa 4% + 1.99)
+
+                            return (
+                                <div key={group.id} className="card" onClick={() => openReceipt(group)} style={{ cursor: 'pointer' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                                        <h3 style={{ fontSize: '1.1rem', margin: 0 }}>{group.place}</h3>
+                                        <span style={{ fontWeight: 'bold', color: 'var(--success)' }}>
+                                            {itemTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                        <Calendar size={16} />
+                                        {group.date} • {group.items.length} itens
+                                    </div>
+                                </div>
+                            );
+                        })}
             </div>
 
             {/* Receipt Modal */}
@@ -87,21 +126,32 @@ const History = () => {
                         </div>
 
                         <div style={{ borderTop: '1px dashed var(--bg-tertiary)', borderBottom: '1px dashed var(--bg-tertiary)', padding: '1.5rem 0', marginBottom: '1.5rem' }}>
-                            {selectedOrder.items.map((item, idx) => (
-                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.95rem' }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>{item.quantity}x {item.name}</span>
-                                    <span>{(item.price * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                                </div>
-                            ))}
+                            {selectedOrder.items.map((item, idx) => {
+                                const realPrice = (item.is_split && item.split_parts > 1 && item.original_price > 0)
+                                    ? (Number(item.original_price) / item.split_parts)
+                                    : Number(item.price);
+                                return (
+                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '0.95rem' }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>{item.quantity}x {item.name}</span>
+                                        <span>{(realPrice * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                    </div>
+                                );
+                            })}
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                                 <span>Taxa do App</span>
                                 <span>R$ 1,99</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                <span>Taxa de Serviço (10%)</span>
+                                <span>Taxas de Serviço e Maquininha</span>
                                 <span>
-                                    {(selectedOrder.items.reduce((acc, i) => acc + (i.price * i.quantity), 0) * 0.1).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                    {/* Calculated as Total - Subtotal - AppFee to be exact or approx */}
+                                    {(() => {
+                                        const getP = (i) => (i.is_split && i.split_parts > 1 && i.original_price > 0) ? (Number(i.original_price) / i.split_parts) : Number(i.price);
+                                        const sub = selectedOrder.items.reduce((acc, i) => acc + (getP(i) * i.quantity), 0);
+                                        const fees = (sub * 0.04);
+                                        return fees.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                    })()}
                                 </span>
                             </div>
                         </div>
@@ -109,11 +159,15 @@ const History = () => {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                             <span style={{ fontSize: '1.2rem', fontWeight: '600' }}>Total Pago</span>
                             <span style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--success)' }}>
-                                {(() => {
-                                    const sub = selectedOrder.items.reduce((acc, i) => acc + (i.price * i.quantity), 0);
-                                    const final = sub + (sub * 0.1) + 1.99;
-                                    return final.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                                })()}
+                                <span style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--success)' }}>
+                                    {(() => {
+                                        // Helper defined here for scope access
+                                        const getP = (i) => (i.is_split && i.split_parts > 1 && i.original_price > 0) ? (Number(i.original_price) / i.split_parts) : Number(i.price);
+                                        const sub = selectedOrder.items.reduce((acc, i) => acc + (getP(i) * i.quantity), 0);
+                                        const final = sub * 1.04 + 1.99; // Updated logic: 4% + 1.99
+                                        return final.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                    })()}
+                                </span>
                             </span>
                         </div>
 

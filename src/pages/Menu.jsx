@@ -257,25 +257,49 @@ const Menu = () => {
             const myCart = cart[user?.id];
             if (myCart) {
                 for (const [productId, qty] of Object.entries(myCart)) {
-                    const product = products.find(p => String(p.id) === String(productId));
-                    if (product) {
-                        const splitName = finalUserIds.length > 1 ? `1/${finalUserIds.length} ${product.name}` : product.name;
+                    // SECURE FLOW: Fetch authoritative price from DB
+                    const dbProduct = await api.getProduct(productId);
 
-                        // Explicit check for requester
+                    if (dbProduct) {
+                        const realPrice = Number(dbProduct.price);
+
+                        // Explicit check for requester in final list
                         if (finalUserIds.includes(user.id)) {
-                            console.log(`🚩 [Menu] Creating SELF order for ${product.name} @ ${product.price * splitRatio}`);
-                            orderPromises.push(api.addOrder(tableId, {
-                                productId: isSplit ? null : product.id,
-                                name: splitName,
-                                price: product.price * splitRatio,
-                                quantity: qty,
-                                orderedBy: user.id
-                            }));
+                            // Calculate split based on REAL price
+                            const totalParts = finalUserIds.length;
+                            const splitPrice = realPrice / totalParts;
+                            const splitName = totalParts > 1 ? `1/${totalParts} ${dbProduct.name}` : dbProduct.name;
+
+                            // DEBUG: Inject calculated price into name to verify INSERT value vs READ value
+                            const debugName = `${splitName} [R$${splitPrice.toFixed(2)}]`;
+
+                            console.log(`🛡️ [Secure Split] Creating Order for SELF. Item: ${dbProduct.name}, RealPrice: ${realPrice}, MyPart: ${splitPrice}`);
+
+                            if (splitPrice > 0) {
+                                orderPromises.push(api.addOrder(tableId, {
+                                    productId: dbProduct.id, // Back to Real ID
+                                    name: splitName,
+                                    price: splitPrice,
+                                    quantity: qty,
+                                    orderedBy: user.id,
+
+                                    // Metadata
+                                    isSplit: true,
+                                    splitParts: totalParts,
+                                    originalPrice: realPrice,
+                                    splitRequester: user.id, // I am the requester
+                                    splitParticipants: finalUserIds
+                                }));
+                            } else {
+                                console.error("❌ [Secure Split] Calculated Price is 0 or Invalid!", { realPrice, totalParts });
+                                addToast(`Erro de preço no item ${dbProduct.name}`, 'error');
+                            }
                         } else {
-                            console.warn("🚩 [Menu] User ID not in finalUserIds?", { uid: user.id, finalUserIds });
+                            console.warn("🚩 [Menu] User ID not in finalUserIds (Self-exclusion?)", { uid: user.id, finalUserIds });
                         }
                     } else {
-                        console.error("🚩 [Menu] Product not found in list:", productId);
+                        console.error("🚩 [Menu] Product not found in DB:", productId);
+                        addToast(`Produto inválido: item removido.`, 'error');
                     }
                 }
             } else {
