@@ -43,6 +43,16 @@ const SplitItemModal = ({
 
     const handleConfirm = () => {
         if (selectedUsers.length === 0) return;
+
+        // Warning if sending only to others (Transfer)
+        const isSelfSelected = selectedUsers.includes(safeUser.id);
+        if (!isSelfSelected) {
+            const confirmTransfer = window.confirm(
+                "Você não se incluiu na divisão. O valor TOTAL do item será cobrado dos usuários selecionados.\n\nDeseja confirmar essa transferência?"
+            );
+            if (!confirmTransfer) return;
+        }
+
         onConfirm(item, selectedUsers);
     };
 

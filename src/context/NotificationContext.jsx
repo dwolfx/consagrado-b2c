@@ -111,7 +111,7 @@ export const NotificationProvider = ({ children }) => {
                     // 2. Calculate Split (Dynamically based on payload)
                     const totalParts = req.itemDetails.totalParts || 2; // Default to 2 if not sent
                     const splitPrice = realPrice / totalParts;
-                    const splitName = `1/${totalParts} ${dbProduct.name}`;
+                    const splitName = totalParts > 1 ? `1/${totalParts} ${dbProduct.name}` : dbProduct.name;
 
                     console.log(`🧮 Math: ${realPrice} / ${totalParts} = ${splitPrice}`);
 

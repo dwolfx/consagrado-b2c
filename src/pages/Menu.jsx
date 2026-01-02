@@ -170,8 +170,13 @@ const Menu = () => {
     const onlineUsersSafe = onlineUsers && onlineUsers.length > 0 ? onlineUsers : [user || { id: 'guest', name: 'Você' }];
 
     const handleSplitConfirm = async (item, selectedUserIds) => {
+        console.log("🟢 [Menu] handleSplitConfirm START", { item, selectedUserIds });
+
         // item here is actually the "Virtual Cart Item" representing total
-        if (!selectedUserIds || selectedUserIds.length === 0) return;
+        if (!selectedUserIds || selectedUserIds.length === 0) {
+            console.warn("⚠️ [Menu] No users selected!");
+            return;
+        }
 
         setSplittingItem(null);
         // Save state for finalization waiting for approval
@@ -182,6 +187,9 @@ const Menu = () => {
             const tableId = localStorage.getItem('my_table_id');
             // Send requests to OTHERS only
             const others = selectedUserIds.filter(uid => uid !== user.id);
+            const totalParts = selectedUserIds.length;
+
+            console.log(`📤 [Menu] Preparing to send to ${others.length} others. Total Parts: ${totalParts}`);
 
             // SPECIAL CASE: If user selected ONLY themselves (or nobody else online)
             // Immediately finalize as a normal order (isSplit=false)
@@ -193,7 +201,11 @@ const Menu = () => {
             }
 
             for (const uid of others) {
-                console.log(`📤 Sending Split Request for item: ${item.name}`, { price: item.price, type: typeof item.price });
+                console.log(`📤 Sending Split Request for item: ${item.name} to ${uid}`, {
+                    price: item.price,
+                    totalParts: totalParts,
+                    items: item.items
+                });
 
                 // Fix: Send ACTUAL product details so Receiver can create valid order
                 await api.requestOrderShare({
@@ -202,7 +214,7 @@ const Menu = () => {
                     quantity: 1,
                     productId: item.id, // 'cart-total' or specific ID
                     items: item.items, // <--- DETAILED LIST FOR SECURITY
-                    totalParts: selectedUserIds.length, // <--- CRITICAL: Send split count (e.g. 2, 3)
+                    totalParts: totalParts, // <--- CRITICAL: Send split count (e.g. 2, 3)
                     tableId: tableId,
                     requesterId: user.id
                 }, uid, user.name || 'Alguém', user.id);
@@ -285,12 +297,14 @@ const Menu = () => {
     // Handle Auto-Proceed on Accept
     useEffect(() => {
         if (waitStatus === 'accepted') {
+            console.log("✅ WaitStatus is ACCEPTED. Scheduling finalization...");
             const timer = setTimeout(() => {
+                console.log("⏱️ Timer fired. Calling finalizeSplitOrder(true)...");
                 finalizeSplitOrder(true);
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [waitStatus]); // Implicitly closes over fresh finalizeSplitOrder state
+    }, [waitStatus, finalizeSplitOrder]); // Implicitly closes over fresh finalizeSplitOrder state
 
     const handleSendOrder = async () => {
         const tableId = localStorage.getItem('my_table_id');
