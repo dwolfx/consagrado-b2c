@@ -49,13 +49,14 @@ const Home = () => {
                 return;
             }
 
-            // Check for 'pending'
+            // Check for 'pending' (excluding service calls)
             const { count: pendCount } = await supabase
                 .from('orders')
                 .select('*', { count: 'exact', head: true })
                 .eq('table_id', tableId)
                 .eq('ordered_by', user.id)
-                .eq('status', 'pending');
+                .eq('status', 'pending')
+                .neq('name', '🔔 CHAMAR GARÇOM'); // Extra safety for legacy
 
             if (pendCount > 0) {
                 setStatusBadge({ label: 'Aguardando', color: '#b45309', bg: '#fef3c7' }); // Yellow

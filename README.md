@@ -37,11 +37,14 @@ Interface projetada para ambientes noturnos:
         *   **Dynamic Rendering**: Frontend calcula o preço exibido baseado em metadados, ignorando inconsistências de banco.
         *   **Full Traceability**: Rastreia `split_requester` e `split_participants` para auditoria completa.
     *   **Detecção de Mesa**: Mostra quantas pessoas estão na mesa em tempo real.
-3.  **Pagamento & Saída**:
+4.  **UX Premium & Status em Tempo Real**:
+    *   **Skeleton Screens**: Carregamento fluído sem layout shifts.
+    *   **Notificações Toast**: Avisos instantâneos quando seu pedido fica pronto ("✅ Pronto: Gin Tônica").
+    *   **Pedir Novamente**: Seção inteligente com favoritos baseados no histórico do usuário.
+5.  **Pagamento & Saída**:
     *   Paga via PIX/Cartão pelo app.
     *   **Taxa Flexível**: Escolha entre 8%, 10% ou 13% (ou justifique a remoção).
     *   Liberação automática na portaria.
-4.  **Perfil & Histórico**:
 
 ---
 
@@ -49,18 +52,12 @@ Interface projetada para ambientes noturnos:
 Para fins de apresentação e testes do MVP, algumas funcionalidades utilizam dados simulados ("mockados") ou simplificados:
 
 1.  **Histórico (`History.jsx`)**:
-    *   Exibe dados fictícios (`Bar do Zé`, `Pub O'Malleys`).
-    *   Não puxa o histórico real do banco de dados ainda.
+    *   Exibe histórico real, filtrando chamadas de garçom não-fiscais.
 
-2.  **Perfil (`Profile.jsx`)**:
-    *   Edição de nome é apenas local (estado temporário).
-    *   Botão "Excluir Conta" realiza apenas logout, sem apagar registros do banco.
+2.  **Autenticação**:
+    *   **Atualizado**: Agora utiliza `AuthContext` com Supabase Auth. Login legado inseguro foi removido.
 
-3.  **Menu (`Menu.jsx`)**:
-    *   As Categorias são fixas no código (`FIXED_CATEGORIES`). Novas categorias criadas no banco requerem atualização no frontend.
-
-4.  **Autenticação**:
-    *   Login simplificado via `users` table lookup. Não utiliza Supabase Auth completo (Magic Link/SMS) neste estágio.
-
-5.  **Pagamento**:
-    *   O fluxo de pagamento é simulado. O sucesso limpa a sessão local da mesa, mas não integra com gateways reais.
+3.  **Segurança (Limitações Conhecidas)**:
+    *   **ID Spoofing**: Atualmente, a API confia no `userId` enviado pelo frontend ao criar pedidos (`addOrder`) ou pagar (`payUserOrders`).
+    *   **Mitigação Futura**: Refatorar `api.js` para ignorar o parâmetro enviado e extrair o ID diretamente da sessão segura (`supabase.auth.getUser()`). Isso foi postergado para preservar scripts de teste legados.
+    *   **Risco**: Usuários maliciosos tecnicamente avançados poderiam criar pedidos em nome de outros se souberem o UUID.

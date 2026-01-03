@@ -21,6 +21,9 @@ const History = () => {
             const groups = {};
 
             orders.forEach(order => {
+                // Filter out service calls and legacy waiter calls
+                if (order.status === 'service_call' || order.name === '🔔 CHAMAR GARÇOM') return;
+
                 // specific date string DD/MM/YYYY
                 const dateObj = new Date(order.created_at);
                 const dateKey = dateObj.toLocaleDateString('pt-BR');

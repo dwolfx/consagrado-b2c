@@ -1,5 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Search, ShoppingBag, CheckCircle, Beer, Wine, UtensilsCrossed, Coffee, Pizza, IceCream, Sandwich, Users } from 'lucide-react';
+import {
+    ArrowLeft, Plus, Search, Star,
+    ShoppingBag, CheckCircle, Beer, Wine, UtensilsCrossed, Coffee, Pizza, IceCream, Sandwich, Users
+} from 'lucide-react';
+import SkeletonProductCard from '../components/SkeletonProductCard';
 import { useState, useEffect } from 'react';
 import { api, supabase } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -20,6 +24,93 @@ const CATEGORY_ICONS = {
 const CATEGORY_ORDER = [
     'Cervejas', 'Drinks', 'Petiscos', 'Lanches', 'Pratos', 'Sem Álcool', 'Sobremesas'
 ];
+
+// Favorites Component
+const FavoritesSection = ({ userId, onItemClick }) => {
+    const [favorites, setFavorites] = useState([]);
+
+    useEffect(() => {
+        if (!userId) return;
+        const loadFavorites = async () => {
+            // Fetch last 20 orders to find frequency
+            const { data } = await supabase
+                .from('orders')
+                .select('*, product:products(*)') // Join products to get image/details
+                .eq('ordered_by', userId)
+                .neq('status', 'service_call') // Ignore waiter calls
+                .neq('product_id', null)
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (data && data.length > 0) {
+                // Deduplicate by Product ID
+                const uniqueMap = new Map();
+                data.forEach(order => {
+                    // Use product data if available (better for images), else order fallback
+                    const prod = order.product || {
+                        id: order.product_id,
+                        name: order.name,
+                        price: order.price, // Might be split price, careful
+                        image: null // fallback
+                    };
+
+                    // Skip if it looks like a split fragment (name starts with "1/")
+                    if (order.name.match(/^\d+\//)) return;
+
+                    if (!uniqueMap.has(prod.id)) {
+                        uniqueMap.set(prod.id, prod);
+                    }
+                });
+                setFavorites(Array.from(uniqueMap.values()).slice(0, 5)); // Top 5 recent
+            }
+        };
+        loadFavorites();
+    }, [userId]);
+
+    if (favorites.length === 0) return null;
+
+    return (
+        <div className="fade-in" style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', paddingLeft: '0.25rem' }}>
+                <Star size={18} fill="var(--brand-color)" color="var(--brand-color)" />
+                <h3 style={{ fontSize: '1rem', margin: 0 }}>Pedir Novamente</h3>
+            </div>
+            <div style={{
+                display: 'flex', gap: '0.75rem', overflowX: 'auto',
+                paddingBottom: '0.5rem', scrollbarWidth: 'none', margin: '0 -1rem', padding: '0 1rem'
+            }}>
+                {favorites.map(item => (
+                    <div
+                        key={item.id}
+                        onClick={() => onItemClick(item)}
+                        style={{
+                            minWidth: '140px', maxWidth: '140px',
+                            background: 'var(--bg-secondary)',
+                            padding: '0.75rem', borderRadius: '12px',
+                            border: '1px solid var(--bg-tertiary)',
+                            cursor: 'pointer', flexShrink: 0
+                        }}>
+                        <div style={{ marginBottom: '0.5rem' }}>
+                            <img
+                                src={item.image_url || item.image}
+                                alt={item.name}
+                                style={{
+                                    width: '100%', height: '80px', objectFit: 'cover',
+                                    borderRadius: '8px', backgroundColor: 'var(--bg-tertiary)'
+                                }}
+                                onError={(e) => e.target.style.display = 'none'}
+                            />
+                        </div>
+                        <h4 style={{ fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</h4>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 'bold' }}>
+                            R$ {Number(item.price).toFixed(2).replace('.', ',')}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
 
 const Menu = () => {
     const navigate = useNavigate();
@@ -96,8 +187,8 @@ const Menu = () => {
         let channel;
         // Listen on MY user channel for responses directed to ME
         if (user?.id) {
-            console.log(`📡 Listening for Split Responses on user_notifications:${user.id}`);
-            channel = supabase.channel(`user_notifications:${user.id}`)
+            console.log(`📡 Listening for Split Responses on user_notifications:${user.id} `);
+            channel = supabase.channel(`user_notifications:${user.id} `)
                 .on('broadcast', { event: 'split_response' }, (payload) => {
                     console.log("🔥 Received Split Response", payload);
 
@@ -189,7 +280,7 @@ const Menu = () => {
             const others = selectedUserIds.filter(uid => uid !== user.id);
             const totalParts = selectedUserIds.length;
 
-            console.log(`📤 [Menu] Preparing to send to ${others.length} others. Total Parts: ${totalParts}`);
+            console.log(`📤[Menu] Preparing to send to ${others.length} others.Total Parts: ${totalParts} `);
 
             // SPECIAL CASE: If user selected ONLY themselves (or nobody else online)
             // Immediately finalize as a normal order (isSplit=false)
@@ -201,7 +292,7 @@ const Menu = () => {
             }
 
             for (const uid of others) {
-                console.log(`📤 Sending Split Request for item: ${item.name} to ${uid}`, {
+                console.log(`📤 Sending Split Request for item: ${item.name} to ${uid} `, {
                     price: item.price,
                     totalParts: totalParts,
                     items: item.items
@@ -268,12 +359,12 @@ const Menu = () => {
                             // Calculate split based on REAL price
                             const totalParts = finalUserIds.length;
                             const splitPrice = realPrice / totalParts;
-                            const splitName = totalParts > 1 ? `1/${totalParts} ${dbProduct.name}` : dbProduct.name;
+                            const splitName = totalParts > 1 ? `1 / ${totalParts} ${dbProduct.name} ` : dbProduct.name;
 
                             // DEBUG: Inject calculated price into name to verify INSERT value vs READ value
                             const debugName = `${splitName} [R$${splitPrice.toFixed(2)}]`;
 
-                            console.log(`🛡️ [Secure Split] Creating Order for SELF. Item: ${dbProduct.name}, RealPrice: ${realPrice}, MyPart: ${splitPrice}`);
+                            console.log(`🛡️[Secure Split] Creating Order for SELF.Item: ${dbProduct.name}, RealPrice: ${realPrice}, MyPart: ${splitPrice} `);
 
                             if (splitPrice > 0) {
                                 orderPromises.push(api.addOrder(tableId, {
@@ -292,7 +383,7 @@ const Menu = () => {
                                 }));
                             } else {
                                 console.error("❌ [Secure Split] Calculated Price is 0 or Invalid!", { realPrice, totalParts });
-                                addToast(`Erro de preço no item ${dbProduct.name}`, 'error');
+                                addToast(`Erro de preço no item ${dbProduct.name} `, 'error');
                             }
                         } else {
                             console.warn("🚩 [Menu] User ID not in finalUserIds (Self-exclusion?)", { uid: user.id, finalUserIds });
@@ -424,42 +515,54 @@ const Menu = () => {
                 </div>
             </header>
 
+            {/* Favorites / Buy Again Section */}
+            {
+                !searchTerm && !loading && (
+                    <FavoritesSection
+                        userId={user?.id}
+                        onItemClick={handleItemClick}
+                    />
+                )
+            }
+
             {/* Categories */}
-            {!searchTerm && (
-                <div style={{
-                    display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem',
-                    marginBottom: '1rem', scrollbarWidth: 'none'
-                }}>
-                    {categories.map(cat => {
-                        const Icon = CATEGORY_ICONS[cat] || ShoppingBag;
-                        const isSelected = selectedCategory === cat;
-                        return (
-                            <button
-                                key={cat}
-                                onClick={() => setSelectedCategory(cat)}
-                                style={{
-                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
-                                    minWidth: '80px', opacity: isSelected ? 1 : 0.6,
-                                    background: 'none', border: 'none', cursor: 'pointer', outline: 'none'
-                                }}
-                            >
-                                <div style={{
-                                    width: '60px', height: '60px', borderRadius: '16px', overflow: 'hidden',
-                                    border: isSelected ? '2px solid var(--primary)' : '2px solid transparent',
-                                    backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.2)' : 'var(--bg-tertiary)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    transition: 'all 0.2s ease'
-                                }}>
-                                    <Icon size={24} color={isSelected ? 'var(--primary)' : 'var(--text-secondary)'} />
-                                </div>
-                                <span style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', color: isSelected ? 'white' : 'var(--text-secondary)' }}>
-                                    {cat}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
-            )}
+            {
+                !searchTerm && (
+                    <div style={{
+                        display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem',
+                        marginBottom: '1rem', scrollbarWidth: 'none'
+                    }}>
+                        {categories.map(cat => {
+                            const Icon = CATEGORY_ICONS[cat] || ShoppingBag;
+                            const isSelected = selectedCategory === cat;
+                            return (
+                                <button
+                                    key={cat}
+                                    onClick={() => setSelectedCategory(cat)}
+                                    style={{
+                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+                                        minWidth: '80px', opacity: isSelected ? 1 : 0.6,
+                                        background: 'none', border: 'none', cursor: 'pointer', outline: 'none'
+                                    }}
+                                >
+                                    <div style={{
+                                        width: '60px', height: '60px', borderRadius: '16px', overflow: 'hidden',
+                                        border: isSelected ? '2px solid var(--primary)' : '2px solid transparent',
+                                        backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.2)' : 'var(--bg-tertiary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        transition: 'all 0.2s ease'
+                                    }}>
+                                        <Icon size={24} color={isSelected ? 'var(--primary)' : 'var(--text-secondary)'} />
+                                    </div>
+                                    <span style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', color: isSelected ? 'white' : 'var(--text-secondary)' }}>
+                                        {cat}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )
+            }
 
             {/* Product List */}
             <div>
@@ -478,9 +581,23 @@ const Menu = () => {
                                 key={item.id}
                                 className="card"
                                 onClick={() => handleItemClick(item)}
-                                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 0, cursor: 'pointer' }}
+                                style={{ display: 'flex', alignItems: 'center', marginBottom: 0, cursor: 'pointer', gap: '1rem' }}
                             >
-                                <div style={{ flex: 1 }}>
+                                {(item.image_url || item.image) && (
+                                    <div style={{ flexShrink: 0 }}>
+                                        <img
+                                            src={item.image_url || item.image}
+                                            alt={item.name}
+                                            style={{
+                                                width: '80px', height: '80px',
+                                                borderRadius: '12px', objectFit: 'cover',
+                                                backgroundColor: 'var(--bg-tertiary)'
+                                            }}
+                                            onError={(e) => e.target.style.display = 'none'} // Fallback if broken
+                                        />
+                                    </div>
+                                )}
+                                <div style={{ flex: 1, minWidth: 0 }}>
                                     <h4 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>{item.name}</h4>
                                     {item.description && (
                                         <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
@@ -535,111 +652,117 @@ const Menu = () => {
             </div>
 
             {/* Cart Footer */}
-            {cartCount > 0 && (
-                <div style={{
-                    position: 'fixed', bottom: '1rem', left: '1rem', right: '1rem',
-                    animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-                }}>
-                    <button
-                        onClick={handleSendOrder}
-                        disabled={sending}
-                        className="btn btn-primary"
-                        style={{
-                            borderRadius: '16px', padding: '1rem',
-                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                            boxShadow: '0 10px 25px -5px var(--primary-glow)'
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <div style={{
-                                backgroundColor: 'rgba(255,255,255,0.2)', width: '28px', height: '28px',
-                                borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: '0.9rem', fontWeight: 'bold'
-                            }}>
-                                {cartCount}
+            {
+                cartCount > 0 && (
+                    <div style={{
+                        position: 'fixed', bottom: '1rem', left: '1rem', right: '1rem',
+                        animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+                    }}>
+                        <button
+                            onClick={handleSendOrder}
+                            disabled={sending}
+                            className="btn btn-primary"
+                            style={{
+                                borderRadius: '16px', padding: '1rem',
+                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                boxShadow: '0 10px 25px -5px var(--primary-glow)'
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <div style={{
+                                    backgroundColor: 'rgba(255,255,255,0.2)', width: '28px', height: '28px',
+                                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: '0.9rem', fontWeight: 'bold'
+                                }}>
+                                    {cartCount}
+                                </div>
+                                <span>Fazer pedido</span>
                             </div>
-                            <span>Fazer pedido</span>
-                        </div>
-                        <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                            {sending ? 'Enviando...' : cartTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                        </span>
-                    </button>
-                </div>
-            )}
+                            <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
+                                {sending ? 'Enviando...' : cartTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </span>
+                        </button>
+                    </div>
+                )
+            }
 
             {/* SPLIT MODAL */}
-            {splittingItem && (
-                <SplitItemModal
-                    item={splittingItem}
-                    currentUser={user || { id: 'guest', name: 'Você' }}
-                    onlineUsers={onlineUsersSafe}
-                    onClose={() => setSplittingItem(null)}
-                    onConfirm={handleSplitConfirm}
-                    confirmLabel="Confirmar Pedido"
-                />
-            )}
+            {
+                splittingItem && (
+                    <SplitItemModal
+                        item={splittingItem}
+                        currentUser={user || { id: 'guest', name: 'Você' }}
+                        onlineUsers={onlineUsersSafe}
+                        onClose={() => setSplittingItem(null)}
+                        onConfirm={handleSplitConfirm}
+                        confirmLabel="Confirmar Pedido"
+                    />
+                )
+            }
 
             {/* WAITING MODAL */}
-            {waitStatus !== 'idle' && (
-                <div style={{
-                    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem'
-                }}>
-                    <div className="card" style={{ width: '100%', textAlign: 'center', padding: '2rem' }}>
-                        {waitStatus === 'waiting' && (
-                            <>
-                                <div className="spinner" style={{ margin: '0 auto 1rem auto' }}></div>
-                                <h3>Aguardando confirmação...</h3>
-                                <p style={{ color: 'var(--text-secondary)' }}>Esperando os outros aceitarem.</p>
-                                <button
-                                    onClick={() => {
-                                        setWaitStatus('idle');
-                                        setPendingSplitData(null);
-                                        // Optional: Send "Cancel" broadcast if we want to be fancy later
-                                    }}
-                                    className="btn btn-secondary"
-                                    style={{ marginTop: '1rem', width: '100%' }}
-                                >
-                                    Cancelar
-                                </button>
-                            </>
-                        )}
-                        {waitStatus === 'accepted' && (
-                            <>
-                                <CheckCircle size={48} color="var(--primary)" style={{ margin: '0 auto 1rem auto' }} />
-                                <h3>Confirmado!</h3>
-                                <p>{responderName} aceitou dividir.</p>
-                                <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>Enviando pedido...</p>
-                            </>
-                        )}
-                        {waitStatus === 'rejected' && (
-                            <>
-                                <UtensilsCrossed size={48} color="#ef4444" style={{ margin: '0 auto 1rem auto' }} />
-                                <h3>Recusado</h3>
-                                <p>{responderName} preferiu não dividir.</p>
-                                <p style={{ margin: '1rem 0', fontWeight: 'bold' }}>Deseja continuar sozinho?</p>
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+            {
+                waitStatus !== 'idle' && (
+                    <div style={{
+                        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem'
+                    }}>
+                        <div className="card" style={{ width: '100%', textAlign: 'center', padding: '2rem' }}>
+                            {waitStatus === 'waiting' && (
+                                <>
+                                    <div className="spinner" style={{ margin: '0 auto 1rem auto' }}></div>
+                                    <h3>Aguardando confirmação...</h3>
+                                    <p style={{ color: 'var(--text-secondary)' }}>Esperando os outros aceitarem.</p>
                                     <button
-                                        onClick={() => { setWaitStatus('idle'); setPendingSplitData(null); }}
+                                        onClick={() => {
+                                            setWaitStatus('idle');
+                                            setPendingSplitData(null);
+                                            // Optional: Send "Cancel" broadcast if we want to be fancy later
+                                        }}
                                         className="btn btn-secondary"
-                                        style={{ flex: 1 }}
+                                        style={{ marginTop: '1rem', width: '100%' }}
                                     >
                                         Cancelar
                                     </button>
-                                    <button
-                                        onClick={() => finalizeSplitOrder(false)} // False = Not Split (Alone)
-                                        className="btn btn-primary"
-                                        style={{ flex: 1 }}
-                                    >
-                                        Continuar
-                                    </button>
-                                </div>
-                            </>
-                        )}
+                                </>
+                            )}
+                            {waitStatus === 'accepted' && (
+                                <>
+                                    <CheckCircle size={48} color="var(--primary)" style={{ margin: '0 auto 1rem auto' }} />
+                                    <h3>Confirmado!</h3>
+                                    <p>{responderName} aceitou dividir.</p>
+                                    <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>Enviando pedido...</p>
+                                </>
+                            )}
+                            {waitStatus === 'rejected' && (
+                                <>
+                                    <UtensilsCrossed size={48} color="#ef4444" style={{ margin: '0 auto 1rem auto' }} />
+                                    <h3>Recusado</h3>
+                                    <p>{responderName} preferiu não dividir.</p>
+                                    <p style={{ margin: '1rem 0', fontWeight: 'bold' }}>Deseja continuar sozinho?</p>
+                                    <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                        <button
+                                            onClick={() => { setWaitStatus('idle'); setPendingSplitData(null); }}
+                                            className="btn btn-secondary"
+                                            style={{ flex: 1 }}
+                                        >
+                                            Cancelar
+                                        </button>
+                                        <button
+                                            onClick={() => finalizeSplitOrder(false)} // False = Not Split (Alone)
+                                            className="btn btn-primary"
+                                            style={{ flex: 1 }}
+                                        >
+                                            Continuar
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };
 

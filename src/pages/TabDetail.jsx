@@ -179,7 +179,7 @@ const TabDetail = () => {
         const realPrice = getDisplayPrice(o);
         const name = o.name || 'Unnamed';
 
-        const isInternal = name === '🔔 CHAMAR GARÇOM';
+        const isInternal = name === '🔔 CHAMAR GARÇOM' || o.status === 'service_call';
         const isPaid = o.status === 'paid';
         const isPricePositive = realPrice > 0; // Check corrected price
 

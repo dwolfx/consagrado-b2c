@@ -40,7 +40,8 @@ const Payment = () => {
                 const myId = user?.id;
                 const myOrders = orders.filter(o =>
                     (o.ordered_by === myId) &&
-                    (o.status !== 'paid') // CRITICAL: Exclude previously paid items
+                    (o.status !== 'paid') && // CRITICAL: Exclude previously paid items
+                    (o.status !== 'service_call') // Exclude service calls from payment
                 );
 
                 // Helper to ensure split price correctness

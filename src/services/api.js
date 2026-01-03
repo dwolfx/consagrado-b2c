@@ -113,6 +113,7 @@ export const api = {
     // Service
     callWaiter: async (tableId, userId) => {
         // Workaround: Create a special 0-price order to notify staff
+        // Status 'service_call' hides it from client frontend but keeps it invisible for B2B/Waiter App
         const { data, error } = await supabase
             .from('orders')
             .insert([{
@@ -121,7 +122,7 @@ export const api = {
                 name: '🔔 CHAMAR GARÇOM',
                 price: 0,
                 quantity: 1,
-                status: 'pending',
+                status: 'service_call', // NEW STATUS
                 ordered_by: userId
             }])
             .select();
@@ -146,18 +147,8 @@ export const api = {
         return data;
     },
 
-    // Users (Auth)
-    login: async (email, password) => {
-        // For this demo, we are doing simple table lookup. 
-        // In production, use supabase.auth.signInWithPassword()
-        let { data, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('email', email)
-            .eq('password', password)
-            .single();
-        return data;
-    },
+    // Users (Auth) handled by AuthContext (Supabase Auth)
+    // Legacy insecure login removed.
 
     // DEMO UTILS (Reset/Clear)
     clearTableOrders: async (tableId) => {
@@ -178,7 +169,9 @@ export const api = {
             .update({ status: 'paid' })
             .eq('table_id', tableId)
             .eq('ordered_by', userId)
-            .neq('status', 'paid') // Only pay unpaid
+            // CRITICAL: Do not pay/archive service calls
+            .neq('status', 'paid')
+            .neq('status', 'service_call')
             .select();
 
         if (error) console.error("Error paying orders", error);

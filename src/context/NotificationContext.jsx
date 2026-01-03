@@ -60,11 +60,41 @@ export const NotificationProvider = ({ children }) => {
                 console.log(`📡 [NotificationContext] User Channel Status (${user.id}):`, status);
             });
 
+        // 3. Orders Status Channel (Real-time Food Updates)
+        const orderChannel = supabase.channel(`orders_status:${user.id}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'orders',
+                    filter: `ordered_by=eq.${user.id}`
+                },
+                (payload) => {
+                    const newStatus = payload.new.status;
+                    const oldStatus = payload.old.status;
+                    const itemName = payload.new.name;
+
+                    // Only notify on meaningful status changes forward
+                    if (newStatus !== oldStatus) {
+                        if (newStatus === 'preparing') {
+                            addToast(`👨‍🍳 Preparando: ${itemName}`, 'info');
+                        } else if (newStatus === 'ready') {
+                            addToast(`✅ Pronto: ${itemName}`, 'success');
+                        } else if (newStatus === 'delivered') {
+                            addToast(`🚀 Entregue: ${itemName}`, 'success');
+                        }
+                    }
+                }
+            )
+            .subscribe();
+
         console.log("🔌 [NotificationContext] Subscribing channels for:", { uid: user.id, tid: tableId });
 
         return () => {
             supabase.removeChannel(tableChannel);
             supabase.removeChannel(userChannel);
+            supabase.removeChannel(orderChannel);
         };
     }, [user, tableId]);
 
