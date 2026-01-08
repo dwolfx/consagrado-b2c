@@ -39,12 +39,39 @@ export const AuthProvider = ({ children }) => {
                     .eq('id', authData.user.id)
                     .single();
 
-                const userObj = profile || {
+                let userObj = profile;
+
+                // 2026-01-06: Fix - If public profile missing, create it immediately.
+                if (!userObj) {
+                    console.warn('Profile missing for user, creating now...');
+                    const newProfile = {
+                        id: authData.user.id,
+                        email: authData.user.email,
+                        role: 'customer',
+                        name: authData.user.user_metadata?.name || 'Usuário',
+                        // Use updated transparent/default avatar logic for new profiles
+                        avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${authData.user.email}&eyes=default&mouth=default&eyebrows=default`
+                    };
+
+                    const { error: insertError } = await supabase
+                        .from('users')
+                        .insert([newProfile]);
+
+                    if (insertError) {
+                        console.error('Failed to create missing profile:', insertError);
+                        // Fallback to memory, but warn this will not persist updates
+                    } else {
+                        userObj = newProfile;
+                    }
+                }
+
+                // Fallback struct if insert failed or just safety
+                userObj = userObj || {
                     id: authData.user.id,
                     email: authData.user.email,
                     role: 'customer',
                     name: 'Usuário',
-                    avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${authData.user.email}&backgroundColor=b6e3f4`
+                    avatar: `https://api.dicebear.com/9.x/avataaars/svg?seed=${authData.user.email}&eyes=default&mouth=default&eyebrows=default`
                 };
 
                 setUser(userObj);
@@ -110,12 +137,19 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('garcom_user', JSON.stringify(updatedUser));
 
         try {
-            await supabase
+            const { error } = await supabase
                 .from('users')
                 .update(updates)
                 .eq('id', user.id);
+
+            if (error) {
+                console.error('CRITICAL: Supabase update failed:', error.message, error.details, error.hint);
+                alert(`Erro ao salvar no banco: ${error.message}`); // Temporary alert to notify user immediately
+            } else {
+                console.log('Supabase update successful for:', user.id);
+            }
         } catch (e) {
-            console.error('Update failed', e);
+            console.error('Update exception', e);
         }
     };
 

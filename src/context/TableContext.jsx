@@ -28,7 +28,7 @@ export const TableProvider = ({ children }) => {
                 setEstablishment(null);
                 // Reset Theme to Dark Mode Default (Black/Neutral) if no table
                 document.documentElement.style.setProperty('--bg-primary', '#000000');
-                document.documentElement.style.setProperty('--brand-color', '#f59e0b'); // Default Gold
+                document.documentElement.style.setProperty('--brand-color', '#dedede'); // Default Neutral
                 return;
             }
 
@@ -37,29 +37,73 @@ export const TableProvider = ({ children }) => {
                 if (tableData && tableData.establishment) {
                     setEstablishment(tableData.establishment);
 
-                    // APPLY THEME
-                    const brandColor = tableData.establishment.theme_color || '#f59e0b';
-                    document.documentElement.style.setProperty('--brand-color', brandColor);
-
-                    // Custom Theme Logic (e.g. Red for Imperio Demo)
-                    if (tableData.establishment.id === 1) {
-                        document.documentElement.style.setProperty('--bg-primary', '#450a0a'); // Red 950
-                        document.documentElement.style.setProperty('--bg-secondary', '#7f1d1d'); // Red 900
-                        document.documentElement.style.setProperty('--bg-tertiary', '#991b1b'); // Red 800
-                        document.documentElement.style.setProperty('--text-primary', '#fffFb1'); // Warm White
-                        document.documentElement.style.setProperty('--text-secondary', '#fca5a5'); // Red 300
-                    } else {
-                        // Reset to default Dark Mode for others
-                        // (Or implement proper theme system later)
-                    }
+                } else {
+                    setEstablishment(null);
                 }
             } catch (err) {
                 console.error("Error loading table context:", err);
+                setEstablishment(null);
             }
         };
 
         loadEstablishment();
     }, [tableId]);
+
+    // Apply Theme when Establishment Data is loaded/changes
+    useEffect(() => {
+        if (!establishment) {
+            // Reset to default if no establishment
+            document.documentElement.style.setProperty('--bg-primary', '#000000');
+            document.documentElement.style.setProperty('--brand-color', '#dedede');
+            document.documentElement.style.setProperty('--brand-contrast', '#000000');
+            document.documentElement.style.setProperty('--brand-secondary', '#888888');
+            document.documentElement.style.setProperty('--bg-gradient', 'none');
+            return;
+        }
+
+        // APPLY THEME
+        const brandColor = establishment.theme_color || '#dedede';
+        const secondaryColor = establishment.theme_secondary_color || '#888888';
+
+        document.documentElement.style.setProperty('--brand-color', brandColor);
+
+        // Background & Gradient Logic
+        const bgColor = establishment.theme_background_color || '#09090b';
+        document.documentElement.style.setProperty('--bg-primary', bgColor);
+
+        // Generate a subtle gradient (slightly lighter at top-center)
+        const lighterBg = adjustBrightness(bgColor, 15); // Lighten by 15%
+        const gradient = `radial-gradient(circle at 50% 0%, ${lighterBg}, ${bgColor})`;
+        document.documentElement.style.setProperty('--bg-gradient', gradient);
+
+        const contrastColor = getContrastYIQ(brandColor);
+        document.documentElement.style.setProperty('--brand-contrast', contrastColor);
+
+        // Secondary brand color
+        const brandSecondary = establishment.theme_secondary_color || '#888888';
+        document.documentElement.style.setProperty('--brand-secondary', brandSecondary);
+
+    }, [establishment]);
+
+    function adjustBrightness(col, percent) {
+        const num = parseInt(col.replace('#', ''), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) + amt;
+        const B = ((num >> 8) & 0x00FF) + amt;
+        const G = (num & 0x0000FF) + amt;
+        return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (B < 255 ? B < 1 ? 0 : B : 255) * 0x100 + (G < 255 ? G < 1 ? 0 : G : 255)).toString(16).slice(1);
+    }
+
+    // Helper: Calculate Contrast
+    function getContrastYIQ(hexcolor) {
+        hexcolor = hexcolor.replace("#", "");
+        if (hexcolor.length === 3) hexcolor = hexcolor.split('').map(c => c + c).join('');
+        var r = parseInt(hexcolor.substr(0, 2), 16);
+        var g = parseInt(hexcolor.substr(2, 2), 16);
+        var b = parseInt(hexcolor.substr(4, 2), 16);
+        var yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
+        return (yiq >= 128) ? '#000000' : '#ffffff';
+    };
 
 
     // --- 1. DB Presence (Users with Active Orders) ---
@@ -94,6 +138,12 @@ export const TableProvider = ({ children }) => {
                     profiles.forEach(p => foundUsers.push({
                         id: p.id,
                         name: p.name,
+                        email: p.email,
+                        phone: p.phone,
+                        cpf: p.cpf,
+                        passport: p.passport,
+                        country: p.country || 'BR',
+                        settings: p.settings || {},
                         avatar_url: p.avatar || `https://ui-avatars.com/api/?name=${p.name}&background=random`
                     }));
                 }

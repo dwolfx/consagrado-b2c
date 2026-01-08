@@ -5,6 +5,7 @@ import { useTableContext } from '../context/TableContext';
 import { useToast } from '../context/ToastContext';
 import { Receipt, MapPin, LogOut, Camera, History, Utensils, Bell, ChevronRight, Keyboard, Beer, X } from 'lucide-react';
 import { api, supabase } from '../services/api';
+import TableUsersModal from '../components/TableUsersModal';
 
 const Home = () => {
     const { user, logout } = useAuth();
@@ -14,6 +15,7 @@ const Home = () => {
     const [statusBadge, setStatusBadge] = useState(null); // { label, color, bg }
     const [showManualInput, setShowManualInput] = useState(false);
     const [manualCode, setManualCode] = useState('');
+    const [showUsersModal, setShowUsersModal] = useState(false);
 
     const handleManualSubmit = async () => {
         if (!manualCode) return;
@@ -125,16 +127,16 @@ const Home = () => {
                     <>
                         {/* HERO: Establishment Context */}
                         <div style={{ padding: '0.5rem 0 1.5rem', textAlign: 'center' }}>
-                            <h3 style={{ fontSize: '1rem', fontWeight: 500, margin: '0 0 0.25rem 0', color: 'var(--text-secondary)' }}>
-                                Seja bem-vindo ao
-                            </h3>
                             <h2 style={{ fontSize: '1.8rem', fontWeight: 800, margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>
                                 {establishment?.name || 'Consagrado'}
                             </h2>
-                            <span style={{
-                                background: 'var(--bg-tertiary)', padding: '6px 16px', borderRadius: '100px',
-                                fontSize: '0.95rem', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 500
-                            }}>
+                            <span
+                                onClick={() => setShowUsersModal(true)}
+                                style={{
+                                    background: 'var(--bg-tertiary)', padding: '6px 16px', borderRadius: '100px',
+                                    fontSize: '0.95rem', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '6px', fontWeight: 500,
+                                    cursor: 'pointer'
+                                }}>
                                 <MapPin size={16} /> Mesa {tableId}
                             </span>
 
@@ -142,7 +144,9 @@ const Home = () => {
                                 Wait, I am using replace_file_content with a range. I should overlap correctly.
                             */}
                             {onlineUsers.length > 1 && (
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '1rem' }}>
+                                <div
+                                    onClick={() => setShowUsersModal(true)}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '1rem', cursor: 'pointer' }}>
                                     <div style={{ display: 'flex' }}>
                                         {onlineUsers.slice(0, 5).map((u, i) => (
                                             <img
@@ -179,6 +183,7 @@ const Home = () => {
                         </button>
 
                         {/* 2. CHAMAR GARÇOM (Warning/Red) */}
+                        {/* 2. CHAMAR GARÇOM (Emergency/Red) */}
                         <button
                             onClick={async () => {
                                 if (window.confirm('Chamar atendimento na mesa?')) {
@@ -188,10 +193,12 @@ const Home = () => {
                             }}
                             className="btn"
                             style={{
-                                background: '#ef4444', color: 'white', border: 'none',
+                                background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)', // Brighter Red Gradient
+                                color: 'white', border: 'none',
                                 padding: '1.25rem', justifyContent: 'center',
                                 fontSize: '1.2rem', fontWeight: 700, gap: '10px',
-                                textTransform: 'uppercase'
+                                textTransform: 'uppercase',
+                                boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)' // Red Glow
                             }}
                         >
                             <Bell size={24} />
@@ -294,7 +301,7 @@ const Home = () => {
                                                     type="text"
                                                     value={manualCode}
                                                     onChange={(e) => setManualCode(e.target.value.toUpperCase())}
-                                                    placeholder="Cód. Mesa (Ex: A1)"
+                                                    placeholder="Cód. Mesa (Ex: IM0001)"
                                                     autoFocus
                                                     style={{
                                                         flex: 1, padding: '1rem', borderRadius: '12px',
@@ -310,18 +317,24 @@ const Home = () => {
                                                     }}
                                                     className="btn"
                                                     style={{
-                                                        padding: '0 1rem', background: '#ff0000',
-                                                        width: '50px', color: '#ffffff'
+                                                        padding: '0 1rem', background: 'rgba(239, 68, 68, 0.2)',
+                                                        width: '50px', color: '#ef4444', border: 'none'
                                                     }}
                                                 >
-                                                    <X size={15} />
+                                                    <X size={20} />
                                                 </button>
                                             </div>
                                             <button
                                                 onClick={handleManualSubmit}
-                                                className="btn btn-tertiary"
+                                                className="btn"
                                                 disabled={!manualCode}
-                                                style={{ width: '100%', justifyContent: 'center', padding: '1rem' }}
+                                                style={{
+                                                    width: '100%', justifyContent: 'center', padding: '1rem',
+                                                    background: manualCode ? 'var(--brand-color)' : 'var(--bg-tertiary)',
+                                                    color: manualCode ? 'white' : 'var(--text-secondary)',
+                                                    cursor: manualCode ? 'pointer' : 'not-allowed',
+                                                    fontWeight: '700', textTransform: 'uppercase', marginBottom: '8px'
+                                                }}
                                             >
                                                 Entrar na Mesa
                                             </button>
@@ -356,6 +369,12 @@ const Home = () => {
                     </>
                 )}
             </main>
+            {showUsersModal && (
+                <TableUsersModal
+                    users={onlineUsers}
+                    onClose={() => setShowUsersModal(false)}
+                />
+            )}
         </div>
     );
 };

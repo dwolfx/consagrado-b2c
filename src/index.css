@@ -17,7 +17,7 @@
   /* Brand Colors - Dynamic */
   /* Default to a Premium Gold/Amber if not set */
   --brand-color: #f59e0b;
-  --brand-contrast: #000000;
+  --brand-contrast: #ffffff;
   /* Text color on top of brand */
 
   /* Semantic Colors */
@@ -51,12 +51,14 @@
 
 body {
   font-family: var(--font-family);
+  background: var(--bg-gradient, var(--bg-primary));
   background-color: var(--bg-primary);
+  /* Fallback */
   color: var(--text-primary);
   line-height: 1.5;
   font-size: 16px;
   overflow-x: hidden;
-  /* subtle noise texture optional, sticking to clean solid for performance */
+  min-height: 100vh;
 }
 
 h1,

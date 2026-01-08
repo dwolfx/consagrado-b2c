@@ -481,7 +481,27 @@ const Menu = () => {
         }
     };
 
-    if (loading) return <div className="container center-content">Carregando...</div>;
+    if (loading) return (
+        <div className="container" style={{ paddingBottom: '6rem' }}>
+            {/* Search Skeleton */}
+            <div style={{ marginTop: '1rem', height: '40px', borderRadius: '12px', background: 'var(--bg-tertiary)' }} />
+
+            {/* Category Skeleton */}
+            <div style={{ display: 'flex', gap: '1rem', overflowX: 'hidden', paddingBottom: '1rem', marginTop: '1rem', marginBottom: '1rem' }}>
+                {Array(5).fill(0).map((_, i) => (
+                    <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', minWidth: '80px' }}>
+                        <div style={{ width: '60px', height: '60px', borderRadius: '16px', background: 'var(--bg-tertiary)' }} />
+                        <div style={{ width: '40px', height: '10px', borderRadius: '4px', background: 'var(--bg-tertiary)' }} />
+                    </div>
+                ))}
+            </div>
+
+            {/* Product Skeleton */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {Array(6).fill(0).map((_, i) => <SkeletonProductCard key={i} />)}
+            </div>
+        </div>
+    );
 
     return (
         <div className="container" style={{ paddingBottom: '6rem' }}>
@@ -581,7 +601,11 @@ const Menu = () => {
                                 key={item.id}
                                 className="card"
                                 onClick={() => handleItemClick(item)}
-                                style={{ display: 'flex', alignItems: 'center', marginBottom: 0, cursor: 'pointer', gap: '1rem' }}
+                                style={{
+                                    display: 'flex', flexDirection: 'row', alignItems: 'center', // Enforcing Row
+                                    marginBottom: 0, cursor: 'pointer', gap: '1rem',
+                                    textAlign: 'left' // Enforcing Left Align
+                                }}
                             >
                                 {(item.image_url || item.image) && (
                                     <div style={{ flexShrink: 0 }}>
