@@ -21,7 +21,7 @@ const CATEGORY_ICONS = {
     'Pratos': UtensilsCrossed
 };
 
-const CATEGORY_ORDER = [
+const DEFAULT_CATEGORY_ORDER = [
     'Cervejas', 'Drinks', 'Petiscos', 'Lanches', 'Pratos', 'Sem Álcool', 'Sobremesas'
 ];
 
@@ -40,7 +40,8 @@ const FavoritesSection = ({ userId, onItemClick }) => {
                 .neq('status', 'service_call') // Ignore waiter calls
                 .neq('product_id', null)
                 .order('created_at', { ascending: false })
-                .limit(20);
+                // Use product data if available (better for images), else order fallback
+                .limit(40);
 
             if (data && data.length > 0) {
                 // Deduplicate by Product ID
@@ -124,6 +125,7 @@ const Menu = () => {
     const { onlineUsers } = useTablePresence();
 
     const [cart, setCart] = useState({});
+    const [customItems, setCustomItems] = useState({}); // Stores metadata for custom IDs: {'half-123': {name, price...}}
     const [sending, setSending] = useState(false);
     const [establishmentName, setEstablishmentName] = useState('');
 
@@ -135,34 +137,112 @@ const Menu = () => {
     const [pendingSplitData, setPendingSplitData] = useState(null); // Stores { item, cart, selectedUserIds }
     const [responderName, setResponderName] = useState('');
 
+    // Half-Pizza Logic
+    const [showPizzaBuilder, setShowPizzaBuilder] = useState(false);
+    const [pizzaFlavor1, setPizzaFlavor1] = useState(null);
+    const [pizzaFlavor2, setPizzaFlavor2] = useState(null);
+
+    // Dynamic Category Order
+    const [sortOrder, setSortOrder] = useState(DEFAULT_CATEGORY_ORDER);
+
+    const handleOpenPizzaBuilder = () => {
+        setShowPizzaBuilder(true);
+        setPizzaFlavor1(null);
+        setPizzaFlavor2(null);
+    };
+
+    const handleConfirmPizza = () => {
+        if (!pizzaFlavor1 || !pizzaFlavor2) return;
+
+        // Rule: Price is the MAX of the two
+        const finalPrice = Math.max(pizzaFlavor1.price, pizzaFlavor2.price);
+
+        // Composite Item
+        const compositeItem = {
+            id: `half-${Date.now()}`, // Temporary ID for cart
+            name: `½ ${pizzaFlavor1.name} + ½ ${pizzaFlavor2.name}`,
+            price: finalPrice, // Visual only, DB will recalculate
+            image: pizzaFlavor1.image_url || pizzaFlavor1.image,
+            category: 'Pizzas',
+            isComposite: true,
+            // Secure Metadata Payload
+            metadata: {
+                type: 'half_half',
+                parts: [pizzaFlavor1.id, pizzaFlavor2.id]
+            }
+        };
+
+        // Persist Metadata locally
+        setCustomItems(prev => ({ ...prev, [compositeItem.id]: compositeItem }));
+
+        // Add to Cart
+        updateCartDirect(user?.id || 'guest', compositeItem, 1);
+
+        // AUTO CHECKOUT: Create a temporary cart with current items + new item
+        // This avoids waiting for the async 'cart' state update
+        const currentCart = cart[user?.id || 'guest'] || {};
+        const newCartForCheckout = {
+            ...currentCart,
+            [compositeItem.id]: (currentCart[compositeItem.id] || 0) + 1
+        };
+
+        setShowPizzaBuilder(false);
+
+        // Trigger Checkout immediately with explicit overrides to avoid async state race
+        processOrder(newCartForCheckout, { ...customItems, [compositeItem.id]: compositeItem });
+    };
+
     useEffect(() => {
         const load = async () => {
-            const tableId = localStorage.getItem('my_table_id');
+            let hiddenCats = [];
+            // Check if we loaded settings in the previous block
+            if (!tableId) {
+                // We might need to refetch or pass data down, but currently currentSortOrder set above
+                // Actually we need to check the 'hidden_categories' from the SAME place we got 'category_order'
+                // Since we didn't store it in a variable, let's just rely on filtering logic BELOW
+                // Wait, we need to access the Establishment Settings object we fetched earlier.
+            }
 
+            // Since we didn't save the full "settings" object in a variable above, let's just re-fetch or improve the code structure.
+            // Better approach: Let's adjust the logic to capture 'settings' properly.
+
+            let settings = {};
             if (!tableId) {
                 try {
                     const estab = await api.getEstablishment(1);
-                    if (estab) setEstablishmentName(estab.name);
-                } catch (e) { console.error(e); }
+                    if (estab) {
+                        setEstablishmentName(estab.name);
+                        settings = estab.settings || {};
+                    }
+                } catch (e) { console.error(e) }
             } else {
                 try {
                     const tableData = await api.getTable(tableId);
                     if (tableData && tableData.establishment) {
                         setEstablishmentName(tableData.establishment.name);
+                        settings = tableData.establishment.settings || {};
                     }
-                } catch (e) {
-                    console.error("Error fetching table info", e);
-                }
+                } catch (e) { }
             }
+
+            const currentSortOrder = settings.category_order || DEFAULT_CATEGORY_ORDER;
+            const hiddenCategories = settings.hidden_categories || [];
+
+            setSortOrder(currentSortOrder);
 
             try {
                 const data = await api.getProducts();
                 setProducts(data);
 
                 const uniqueCats = [...new Set(data.map(p => p.category))].filter(Boolean);
-                const sortedCats = uniqueCats.sort((a, b) => {
-                    const idxA = CATEGORY_ORDER.indexOf(a);
-                    const idxB = CATEGORY_ORDER.indexOf(b);
+
+                // FILTER HIDDEN CATEGORIES
+                const visibleCats = uniqueCats.filter(c => !hiddenCategories.includes(c));
+
+                const sortedCats = visibleCats.sort((a, b) => {
+                    // Use local currentSortOrder variable for immediate consistency
+                    const idxA = currentSortOrder.indexOf(a);
+                    const idxB = currentSortOrder.indexOf(b);
                     if (idxA !== -1 && idxB !== -1) return idxA - idxB;
                     if (idxA !== -1) return -1;
                     if (idxB !== -1) return 1;
@@ -247,6 +327,14 @@ const Menu = () => {
 
     // Calculate total
     const cartTotal = products.reduce((acc, item) => {
+        // Standard items
+        let itemTotalQty = 0;
+        Object.values(cart).forEach(userCart => {
+            itemTotalQty += (userCart[item.id] || 0);
+        });
+        return acc + (item.price * itemTotalQty);
+    }, 0) + Object.values(customItems).reduce((acc, item) => {
+        // Custom items
         let itemTotalQty = 0;
         Object.values(cart).forEach(userCart => {
             itemTotalQty += (userCart[item.id] || 0);
@@ -421,53 +509,62 @@ const Menu = () => {
         }
     }, [waitStatus, finalizeSplitOrder]); // Implicitly closes over fresh finalizeSplitOrder state
 
-    const handleSendOrder = async () => {
+    // Unified Order Processing Logic
+    const processOrder = async (cartToProcess, customItemsOverride = null) => {
         const tableId = localStorage.getItem('my_table_id');
+
+        // Use override if provided (for immediate checkout), else use state
+        const itemsSource = customItemsOverride || customItems;
         if (!tableId) {
             addToast('Você precisa escanear uma mesa primeiro!', 'error');
             navigate('/scanner');
             return;
         }
 
+        // Calculate Cart Total for this specific cart
+        const currentTotal = products.reduce((acc, item) => {
+            let qty = cartToProcess[item.id] || 0;
+            return acc + (item.price * qty);
+        }, 0) + Object.values(itemsSource).reduce((acc, item) => {
+            let qty = cartToProcess[item.id] || 0;
+            return acc + (item.price * qty);
+        }, 0);
+
         // If multiple users -> Confirm Split
         if (onlineUsers.length > 1) {
-            // Create a virtual item for the modal to display TOTAL
-            // But include the ACTUAL ITEMS for the secure backend/receiver process
-            const myCart = cart[user?.id] || {};
-            const cartItems = Object.entries(myCart).map(([pid, qty]) => ({ productId: pid, quantity: qty }));
+            const cartItems = Object.entries(cartToProcess).map(([pid, qty]) => ({ productId: pid, quantity: qty }));
 
             const virtualItem = {
                 name: 'Total do Pedido',
-                price: cartTotal,
+                price: currentTotal,
                 id: 'cart-total',
-                items: cartItems // <--- Payload for receiver
+                items: cartItems
             };
             setSplittingItem(virtualItem);
             return;
         }
 
         // Single User Direct Send
-        console.log("📤 handleSendOrder: cartTotal =", cartTotal); // DEBUG TOTAL
         setSending(true);
         try {
             const orderPromises = [];
 
-            const myCart = cart[user?.id];
+            Object.entries(cartToProcess).forEach(([productId, qty]) => {
+                // Try to find in DB products OR Custom Items (using correct source)
+                let product = products.find(p => String(p.id) === String(productId));
+                if (!product && itemsSource[productId]) product = itemsSource[productId];
 
-            if (myCart) {
-                Object.entries(myCart).forEach(([productId, qty]) => {
-                    const product = products.find(p => String(p.id) === String(productId));
-                    if (product) {
-                        orderPromises.push(api.addOrder(tableId, {
-                            productId: product.id,
-                            name: product.name,
-                            price: product.price,
-                            quantity: qty,
-                            orderedBy: user.id
-                        }));
-                    }
-                });
-            }
+                if (product) {
+                    orderPromises.push(api.addOrder(tableId, {
+                        productId: product.id,
+                        name: product.name,
+                        price: product.price,
+                        quantity: qty,
+                        orderedBy: user.id,
+                        metadata: product.metadata
+                    }));
+                }
+            });
 
             await Promise.all(orderPromises);
             addToast('Pedido enviado para a cozinha! 👨‍🍳', 'success');
@@ -479,6 +576,10 @@ const Menu = () => {
         } finally {
             setSending(false);
         }
+    };
+
+    const handleSendOrder = () => {
+        processOrder(cart[user?.id] || {});
     };
 
     if (loading) return (
@@ -591,6 +692,44 @@ const Menu = () => {
                 </h3>
 
                 <div style={{ display: 'grid', gap: '1rem' }}>
+                    {/* Contextual "Meio a Meio" Button - Only shows if category has 'Pizza' in name */}
+                    {!searchTerm && selectedCategory && selectedCategory.toLowerCase().includes('pizza') && (
+                        <div
+                            className="card"
+                            onClick={handleOpenPizzaBuilder}
+                            style={{
+                                display: 'flex', flexDirection: 'row', alignItems: 'center',
+                                marginBottom: 0, cursor: 'pointer', gap: '1rem',
+                                border: '2px dashed var(--brand-color)',
+                                backgroundColor: 'rgba(239, 68, 68, 0.05)'
+                            }}
+                        >
+                            <div style={{
+                                width: '80px', height: '80px',
+                                borderRadius: '12px',
+                                backgroundColor: 'var(--brand-color)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: 'white', fontSize: '2rem', flexShrink: 0
+                            }}>
+                                🍕
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <h4 style={{ fontSize: '1rem', marginBottom: '0.25rem', color: 'var(--brand-color)' }}>
+                                    Montar Pizza Meio a Meio
+                                </h4>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                    Escolha 2 sabores desta categoria.
+                                </p>
+                            </div>
+                            <div style={{
+                                width: '32px', height: '32px', borderRadius: '50%', background: 'var(--brand-color)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white'
+                            }}>
+                                <Plus size={20} />
+                            </div>
+                        </div>
+                    )}
+
                     {filteredItems.map(item => {
                         // Calculate total in cart for this item (across everyone)
                         let totalInCart = 0;
@@ -723,6 +862,118 @@ const Menu = () => {
                     />
                 )
             }
+
+            {/* PIZZA BUILDER MODAL */}
+            {showPizzaBuilder && (
+                <div style={{
+                    position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', zIndex: 9000,
+                    display: 'flex', flexDirection: 'column', animation: 'fadeIn 0.2s'
+                }}>
+                    <div style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--bg-tertiary)' }}>
+                        <button onClick={() => setShowPizzaBuilder(false)} className="btn-ghost" style={{ width: 'auto', padding: 0 }}>
+                            <ArrowLeft />
+                        </button>
+                        <div>
+                            <h3 style={{ margin: 0 }}>Pizza Meio a Meio</h3>
+                            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Escolha 2 sabores</p>
+                        </div>
+                    </div>
+
+                    <div style={{ flex: 1, padding: '1rem', overflowY: 'auto' }}>
+
+                        {/* Selections Preview */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
+                            <div style={{
+                                padding: '1rem', borderRadius: '12px',
+                                border: pizzaFlavor1 ? '2px solid var(--primary)' : '2px dashed var(--bg-tertiary)',
+                                background: pizzaFlavor1 ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                                textAlign: 'center'
+                            }}>
+                                <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Sabor 1</span>
+                                <div style={{ fontWeight: 'bold' }}>{pizzaFlavor1 ? pizzaFlavor1.name : 'Selecionar...'}</div>
+                                {pizzaFlavor1 && <div style={{ fontSize: '0.8rem', color: 'var(--primary)' }}>{pizzaFlavor1.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>}
+                            </div>
+                            <div style={{
+                                padding: '1rem', borderRadius: '12px',
+                                border: pizzaFlavor2 ? '2px solid var(--primary)' : '2px dashed var(--bg-tertiary)',
+                                background: pizzaFlavor2 ? 'rgba(99, 102, 241, 0.1)' : 'transparent',
+                                textAlign: 'center'
+                            }}>
+                                <span style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Sabor 2</span>
+                                <div style={{ fontWeight: 'bold' }}>{pizzaFlavor2 ? pizzaFlavor2.name : 'Selecionar...'}</div>
+                                {pizzaFlavor2 && <div style={{ fontSize: '0.8rem', color: 'var(--primary)' }}>{pizzaFlavor2.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>}
+                            </div>
+                        </div>
+
+                        {/* List - Filtered by SELECTED CATEGORY to ensure compatibility */}
+                        <h4 style={{ marginBottom: '1rem' }}>Sabores em {selectedCategory}</h4>
+                        <div style={{ display: 'grid', gap: '1rem' }}>
+                            {products
+                                .filter(p => !p.isComposite && p.category === selectedCategory) // EXACT MATCH CATEGORY
+                                .map(pizza => {
+                                    const isSelected1 = pizzaFlavor1?.id === pizza.id;
+                                    const isSelected2 = pizzaFlavor2?.id === pizza.id;
+                                    const isSelected = isSelected1 || isSelected2;
+
+                                    return (
+                                        <div
+                                            key={pizza.id}
+                                            onClick={() => {
+                                                if (isSelected1) setPizzaFlavor1(null);
+                                                else if (isSelected2) setPizzaFlavor2(null);
+                                                else if (!pizzaFlavor1) setPizzaFlavor1(pizza);
+                                                else if (!pizzaFlavor2) setPizzaFlavor2(pizza);
+                                            }}
+                                            className="card"
+                                            style={{
+                                                marginBottom: 0, padding: '1rem',
+                                                border: isSelected ? '2px solid var(--primary)' : '1px solid transparent',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontWeight: 'bold' }}>{pizza.name}</span>
+                                                <span style={{ color: 'var(--text-secondary)' }}>
+                                                    {pizza.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                                </span>
+                                            </div>
+                                            {/* Status Indicator */}
+                                            {isSelected && (
+                                                <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+                                                    <span style={{
+                                                        fontSize: '0.75rem', color: 'white', fontWeight: 'bold',
+                                                        background: 'var(--primary)', padding: '2px 8px', borderRadius: '12px'
+                                                    }}>
+                                                        {isSelected1 ? 'METADE 1' : 'METADE 2'}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                })
+                            }
+                        </div>
+                    </div>
+
+                    {/* Footer Action */}
+                    <div style={{ padding: '1rem', borderTop: '1px solid var(--bg-tertiary)', background: 'var(--bg-secondary)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                            <span>Preço Final (Maior Valor)</span>
+                            <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }}>
+                                {Math.max(pizzaFlavor1?.price || 0, pizzaFlavor2?.price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </span>
+                        </div>
+                        <button
+                            disabled={!pizzaFlavor1 || !pizzaFlavor2}
+                            onClick={handleConfirmPizza}
+                            className="btn btn-primary"
+                            style={{ width: '100%', justifyContent: 'center', opacity: (!pizzaFlavor1 || !pizzaFlavor2) ? 0.5 : 1 }}
+                        >
+                            Confirmar Pizza
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* WAITING MODAL */}
             {

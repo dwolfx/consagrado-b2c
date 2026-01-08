@@ -84,10 +84,14 @@ const AvatarEditor = () => {
         '262e33', '65c9ff', '5199e4', '25557c', 'e6e6e6', 'ff488e', 'ff5c5c', 'ffffff'
     ];
 
+    const backgroundColors = [
+        'transparent', 'b6e3f4', 'c0aede', 'd1d4f9', 'ffd5dc', 'ffdfbf', 'c1e7c4', 'e6e6e6'
+    ];
+
     // State
     const [config, setConfig] = useState({
         top: 'shortFlat', // Valid default
-        lighting: 'transparent', // ensures no background
+        backgroundColor: 'transparent',
         accessories: 'none',
         hairColor: '4a312c',
         facialHair: 'none',
@@ -114,7 +118,7 @@ const AvatarEditor = () => {
 
                 // Read params safely
                 // Note: We deliberately IGNORE 'eyes', 'mouth', 'eyebrows', 'facialHairColor' to enforce defaults for all users
-                ['top', 'accessories', 'hairColor', 'facialHair', 'clothing', 'clothesColor', 'skinColor'].forEach(key => {
+                ['top', 'accessories', 'hairColor', 'facialHair', 'clothing', 'clothesColor', 'skinColor', 'backgroundColor'].forEach(key => {
                     const val = params.get(key);
                     if (val) newConfig[key] = val;
                 });
@@ -165,6 +169,10 @@ const AvatarEditor = () => {
         const params = new URLSearchParams();
 
         params.append('seed', user?.email || 'user');
+
+        if (config.backgroundColor && config.backgroundColor !== 'transparent') {
+            params.append('backgroundColor', config.backgroundColor);
+        }
 
         // Handle Top / No Hair
         if (config.top === 'noHair') {
@@ -231,7 +239,8 @@ const AvatarEditor = () => {
                 <div style={{
                     width: '180px', height: '180px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    // No background here
+                    borderRadius: '50%', overflow: 'hidden', // Circular mask
+                    border: '4px solid var(--border-color)', // Optional: subtle border to define shape
                 }}>
                     {svgContent ? (
                         <div
@@ -247,6 +256,16 @@ const AvatarEditor = () => {
             {/* Controls */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '2rem 1rem 120px 1rem', width: '100%', maxWidth: '500px', margin: '0 auto' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+
+                    {/* 0. Cor de Fundo (New) */}
+                    <ColorSection
+                        label="Fundo do Avatar"
+                        colors={backgroundColors}
+                        selected={config.backgroundColor || 'transparent'}
+                        onSelect={(c) => setConfig({ ...config, backgroundColor: c })}
+                        size={40}
+                        isBackground={true}
+                    />
 
                     {/* 1. Tom de Pele */}
                     <ColorSection label="Tom de Pele" colors={skinColors} selected={config.skinColor} onSelect={(c) => setConfig({ ...config, skinColor: c })} size={40} />
@@ -341,7 +360,7 @@ const ControlSection = ({ label, value, displayValue, onPrev, onNext, options })
     </div>
 );
 
-const ColorSection = ({ label, colors, selected, onSelect, size = 32 }) => (
+const ColorSection = ({ label, colors, selected, onSelect, size = 32, isBackground = false }) => (
     <div>
         <label style={{ display: 'block', textAlign: 'center', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
             {label}
@@ -353,13 +372,18 @@ const ColorSection = ({ label, colors, selected, onSelect, size = 32 }) => (
                     onClick={() => onSelect(color)}
                     style={{
                         width: `${size}px`, height: `${size}px`, borderRadius: '50%',
-                        backgroundColor: `#${color}`,
-                        border: selected === color ? '3px solid var(--primary)' : '2px solid transparent',
+                        backgroundColor: color === 'transparent' ? 'transparent' : `#${color}`,
+                        border: selected === color ? '3px solid var(--primary)' : '2px solid rgba(255,255,255,0.2)',
                         cursor: 'pointer',
                         transform: selected === color ? 'scale(1.2)' : 'scale(1)',
                         transition: 'all 0.2s',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                        // Special styling for transparent
+                        backgroundImage: color === 'transparent' ? 'linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%)' : 'none',
+                        backgroundSize: color === 'transparent' ? '10px 10px' : 'auto',
+                        backgroundPosition: color === 'transparent' ? '0 0, 0 5px, 5px -5px, -5px 0px' : 'auto'
                     }}
+                    title={color === 'transparent' ? 'Transparente' : color}
                 />
             ))}
         </div>

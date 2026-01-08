@@ -1,5 +1,5 @@
 import { createContext, useState, useContext, useEffect } from 'react';
-import { supabase } from '../services/api';
+import { api, supabase } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -15,9 +15,60 @@ export const AuthProvider = ({ children }) => {
                 setUser(JSON.parse(storedUser));
             }
             setLoading(false);
+            localStorage.setItem('lastActivity', Date.now()); // Reset on load
         };
         initSession();
     }, []);
+
+    // AUTO-LOGOUT LOGIC
+    useEffect(() => {
+        if (!user) return;
+
+        const TIMEOUT_MS = 3 * 60 * 60 * 1000; // 3 Hours
+        // const TIMEOUT_MS = 10000; // Debug: 10 seconds
+
+        const updateActivity = () => {
+            localStorage.setItem('lastActivity', Date.now());
+        };
+
+        const checkInactivity = async () => {
+            const lastActivity = parseInt(localStorage.getItem('lastActivity') || Date.now());
+            const now = Date.now();
+
+            if (now - lastActivity > TIMEOUT_MS) {
+                console.log("⏰ Inactivity detected. Checking status...");
+                // Check if user has active/unpaid orders
+                const hasActive = await api.checkUserHasActiveItems(user.id);
+
+                if (hasActive) {
+                    console.log("🛡️ Auto-logout blocked: User has active orders/debt.");
+                } else {
+                    console.log("👋 Auto-logout triggering.");
+                    logout();
+                    alert("Sessão expirada por inatividade.");
+                }
+            }
+        };
+
+        // Listeners for activity
+        window.addEventListener('mousemove', updateActivity);
+        window.addEventListener('keydown', updateActivity);
+        window.addEventListener('touchstart', updateActivity);
+        window.addEventListener('scroll', updateActivity);
+        window.addEventListener('click', updateActivity);
+
+        // Check every 1 minute
+        const interval = setInterval(checkInactivity, 60 * 1000);
+
+        return () => {
+            window.removeEventListener('mousemove', updateActivity);
+            window.removeEventListener('keydown', updateActivity);
+            window.removeEventListener('touchstart', updateActivity);
+            window.removeEventListener('scroll', updateActivity);
+            window.removeEventListener('click', updateActivity);
+            clearInterval(interval);
+        };
+    }, [user]);
 
     const login = async (email, password) => {
         try {

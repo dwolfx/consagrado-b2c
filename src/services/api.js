@@ -91,12 +91,16 @@ export const api = {
             .insert([{
                 establishment_id: establishmentId, // <--- REQUIRED FIXED
                 table_id: tableId,
-                product_id: orderData.productId,
+                // Handle "half-" IDs or other custom IDs by setting product_id to NULL
+                product_id: (orderData.productId && String(orderData.productId).startsWith('half-')) ? null : orderData.productId,
                 name: orderData.name,
                 price: parseFloat(orderData.price), // Ensure Number
                 quantity: orderData.quantity,
                 status: 'pending',
                 ordered_by: (orderData.orderedBy || '').toLowerCase(), // Ensure UUID format
+
+                // Secure Metadata for Triggers
+                metadata: orderData.metadata || {}, // <--- NEW COLUMN
 
                 // Split Metadata
                 is_split: !!orderData.isSplit,
@@ -432,5 +436,26 @@ export const api = {
         const { error } = await supabase.from('orders').insert(orders);
         if (error) console.error('Error resetting demo', error);
         return !error;
+    },
+
+    // Status Check for Auto-Logout
+    checkUserHasActiveItems: async (userId) => {
+        if (!userId) return false;
+
+        // Count orders that are NOT paid and NOT service calls
+        const { count, error } = await supabase
+            .from('orders')
+            .select('*', { count: 'exact', head: true })
+            .eq('ordered_by', userId)
+            .neq('status', 'paid')
+            .neq('status', 'service_call');
+
+        if (error) {
+            console.error("Error checking user status", error);
+            return true; // Fail safe: assume active to prevent accidental logout
+        }
+
+        // If count > 0, user has debt/pending items -> KEEP LOGIN
+        return count > 0;
     }
 };
