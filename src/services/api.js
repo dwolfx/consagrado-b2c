@@ -71,9 +71,25 @@ export const api = {
     // Orders
     addOrder: async (tableId, orderData) => {
         console.log("📝 api.addOrder", { tableId, orderData });
+
+        // 1. Fetch Establishment ID from Table
+        const { data: tableData, error: tableError } = await supabase
+            .from('tables')
+            .select('establishment_id')
+            .eq('id', tableId)
+            .single();
+
+        if (tableError || !tableData) {
+            console.error("❌ Critical: Could not find table/establishment for order", tableError);
+            return null;
+        }
+
+        const establishmentId = tableData.establishment_id;
+
         const { data, error } = await supabase
             .from('orders')
             .insert([{
+                establishment_id: establishmentId, // <--- REQUIRED FIXED
                 table_id: tableId,
                 product_id: orderData.productId,
                 name: orderData.name,
@@ -98,8 +114,6 @@ export const api = {
         console.log('✅ Order added successfully:', data);
 
         // Also update table status to occupied if needed
-        // Note: The error variable here would still hold the error from the insert operation.
-        // If we want to handle the update error separately, we'd need a new variable.
         const { error: updateError } = await supabase
             .from('tables')
             .update({ status: 'occupied' })
@@ -112,11 +126,25 @@ export const api = {
 
     // Service
     callWaiter: async (tableId, userId) => {
+        // 1. Fetch Establishment ID from Table
+        const { data: tableData, error: tableError } = await supabase
+            .from('tables')
+            .select('establishment_id')
+            .eq('id', tableId)
+            .single();
+
+        if (tableError || !tableData) {
+            console.error("❌ Critical: Could not find table/establishment for waiter call", tableError);
+            return null;
+        }
+        const establishmentId = tableData.establishment_id;
+
         // Workaround: Create a special 0-price order to notify staff
         // Status 'service_call' hides it from client frontend but keeps it invisible for B2B/Waiter App
         const { data, error } = await supabase
             .from('orders')
             .insert([{
+                establishment_id: establishmentId, // <--- REQUIRED FIXED
                 table_id: tableId,
                 product_id: null, // No specific product
                 name: '🔔 CHAMAR GARÇOM',
