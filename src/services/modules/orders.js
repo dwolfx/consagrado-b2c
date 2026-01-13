@@ -1,5 +1,7 @@
 import { supabase } from '../supabase';
 
+export const _channelCache = {};
+
 export const orderApi = {
     addOrder: async (tableId, orderData) => {
         console.log("📝 api.addOrder", { tableId, orderData });
@@ -166,24 +168,90 @@ export const orderApi = {
     // --- SPLITTING LOGIC ---
 
     requestSplit: async (orderItem, targetUserIds, requesterName, requesterId) => {
-        // Send Broadcast
-        const channel = supabase.channel(`table_notifications:${orderItem.table_id}`);
-        await channel.subscribe(async (status) => {
-            if (status === 'SUBSCRIBED') {
-                await channel.send({
-                    type: 'broadcast',
-                    event: 'request_split',
-                    payload: {
-                        orderId: orderItem.id,
-                        itemName: orderItem.name,
-                        targetIds: targetUserIds,
-                        requesterName,
-                        requesterId
-                    }
-                });
-                // Channel cleanup handled by caller or kept open
+        console.log(`📡 [DEBUG] requestSplit called. Users:`, targetUserIds);
+
+        // 1. Send DIRECTLY to each target user (Preferred)
+        console.log(`📡 Sending Split Request to ${targetUserIds.length} users...`);
+        const userPromises = targetUserIds.map(async (targetId) => {
+            console.log(`   -> Target Channel: user_notifications:${targetId}`);
+
+            // USE CACHE
+            if (!_channelCache[targetId]) {
+                console.log(`      -> Creating NEW channel for ${targetId}`);
+                _channelCache[targetId] = supabase.channel(`user_notifications:${targetId}`);
+            } else {
+                console.log(`      -> Using CACHED channel for ${targetId}`);
             }
+
+            const channel = _channelCache[targetId];
+
+            const waitForSubscription = () => {
+                return new Promise((resolve) => {
+                    // FAST PATH: If already connected, resolve immediately
+                    // Supabase channels usually expose .state property (joined, closed, etc)
+                    // Note: implementation details may vary by version, but subscribe() is generally safe.
+                    // We'll trust the event listener primarily, but handle the "already ready" case.
+
+                    if (channel.state === 'joined') {
+                        console.log(`      -> Channel ${targetId} already JOINED. Ready.`);
+                        return resolve();
+                    }
+
+                    channel.subscribe((status) => {
+                        if (status === 'SUBSCRIBED') {
+                            resolve();
+                        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                            console.error(`      -> Failed to subscribe to ${targetId}: ${status}`);
+                            delete _channelCache[targetId]; // Invalidate bad channel
+                            resolve(); // Resolve anyway to not block Promise.all
+                        }
+                    });
+                });
+            };
+
+            await waitForSubscription();
+
+            console.log(`      -> Sending payload to ${targetId}...`);
+            await channel.send({
+                type: 'broadcast',
+                event: 'request_split',
+                payload: {
+                    orderId: orderItem.id,
+                    itemName: orderItem.name,
+                    targetIds: targetUserIds,
+                    requesterName,
+                    requesterId
+                }
+            });
+            console.log(`      -> Sent to ${targetId}`);
         });
+
+        // 2. Backup: Send to Table Channel (For backward compatibility/reliability)
+        console.log("📡 Sending Backup Broadcast to Table...");
+        const tablePromise = new Promise((resolve) => {
+            const tChannel = supabase.channel(`table_notifications:${orderItem.table_id}`);
+            tChannel.subscribe(async (status) => {
+                if (status === 'SUBSCRIBED') {
+                    await tChannel.send({
+                        type: 'broadcast',
+                        event: 'request_split',
+                        payload: {
+                            orderId: orderItem.id,
+                            itemName: orderItem.name,
+                            targetIds: targetUserIds,
+                            requesterName,
+                            requesterId
+                        }
+                    });
+                    console.log("      -> Backup sent to Table.");
+                    resolve();
+                    setTimeout(() => supabase.removeChannel(tChannel), 1000);
+                }
+            });
+        });
+
+        await Promise.all([...userPromises, tablePromise]);
+        console.log("✅ All split requests sent.");
         return true;
     },
 

@@ -29,7 +29,11 @@ export const useSplitLogic = (visibleOrders = []) => {
                 Math.abs(o.price - item.price) < 0.01
             );
 
-            if (siblings.length > 0) {
+            // FIX: Only treat as "Existing Split" (Edit Mode) if strictly > 1 person is involved.
+            // If it's just me with a "1/2 Pizza", I want to split it NEW with someone (trigger popup).
+            const distinctOwners = new Set(siblings.map(s => s.ordered_by));
+
+            if (siblings.length > 0 && distinctOwners.size > 1) {
                 const siblingUserIds = siblings.map(s => s.ordered_by);
                 setSelectedUsersToSplit(siblingUserIds);
                 setRelatedSplitOrders(siblings);

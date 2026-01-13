@@ -38,6 +38,20 @@ export const NotificationProvider = ({ children }) => {
         // 2. User Channel (Direct requests like "Share this order?")
         // This is the primary channel for the new split flow
         const userChannel = supabase.channel(`user_notifications:${user.id}`)
+            .on('broadcast', { event: 'request_split' }, (payload) => {
+                console.log("🔥 NotificationContext received SPLIT request:", payload);
+                const { orderId, itemName, targetIds, requesterName, requesterId } = payload.payload;
+
+                setIncomingRequest({
+                    id: Date.now(),
+                    type: 'split_bill',
+                    orderId,
+                    itemName,
+                    requesterName,
+                    requesterId,
+                    targetIds
+                });
+            })
             .on('broadcast', { event: 'request_order_share' }, (payload) => {
                 console.log("🔥 NotificationContext received SHARE request:", payload);
                 const { itemDetails, targetUserId, requesterName, requesterId } = payload.payload;
@@ -128,17 +142,39 @@ export const NotificationProvider = ({ children }) => {
                     console.log(`🔒 Validating Item ID: ${pid} (Qty: ${qty})`);
 
                     // 1. Fetch Authoritative Price (Security)
-                    const dbProduct = await api.getProduct(pid);
+                    // If it's a "virtual" half-item (half-...), we cannot fetch from DB. 
+                    // We must trust the payload for these composite items.
+                    const isVirtualItem = String(pid).startsWith('half-');
+                    let realPrice = 0;
+                    let dbProduct = null;
 
-                    if (!dbProduct) {
-                        console.error(`❌ Product ${pid} not found in DB. Skipping.`);
-                        addToast(`Erro: Item não encontrado (ID: ${pid})`, "error");
-                        return false;
+                    if (isVirtualItem) {
+                        console.log(`ℹ️ Virtual Item detected (${pid}). Skipping DB Price Check.`);
+                        // Try to get price from the item payload itself
+                        // We search for the specific item in the list or use the top-level
+                        const payloadItem = (req.itemDetails.items || []).find(i => i.productId === pid) || req.itemDetails;
+                        realPrice = Number(payloadItem.price || payloadItem.originalPrice || 0);
+
+                        // Create a mock dbProduct to satisfy downstream logic
+                        dbProduct = {
+                            id: pid,
+                            name: payloadItem.name || 'Item Dividido',
+                            price: realPrice
+                        };
+                    } else {
+                        // Standard Security Check for Real Products
+                        dbProduct = await api.getProduct(pid);
+
+                        if (!dbProduct) {
+                            console.error(`❌ Product ${pid} not found in DB. Skipping.`);
+                            addToast(`Erro: Item não encontrado (ID: ${pid})`, "error");
+                            return false;
+                        }
+                        realPrice = Number(dbProduct.price);
                     }
 
-                    const realPrice = Number(dbProduct.price);
                     if (!realPrice || realPrice <= 0) {
-                        console.error(`❌ Invalid Price for ${dbProduct.name}:`, realPrice);
+                        console.error(`❌ Invalid Price for ${dbProduct?.name}:`, realPrice);
                         return false;
                     }
 
