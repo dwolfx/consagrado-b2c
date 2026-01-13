@@ -1,9 +1,61 @@
 import React from 'react';
 import { Users } from 'lucide-react';
 
-const TabOrderList = ({ myOrders, othersOrders, showAll, setShowAll, resolveName, onSplitItem }) => {
+const TabOrderList = ({ myOrders, othersOrders, showAll, setShowAll, resolveName, onSplitItem, onlineUsers = [] }) => {
 
     const formatPrice = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    // Helper to get user info
+    const getUserInfo = (id) => {
+        if (!id) return { name: '?', avatar: null };
+        const found = onlineUsers.find(u => u.id === id);
+        return found || { name: '?', avatar_url: null };
+    };
+
+    const AvatarStack = ({ requesterId, participants = [] }) => {
+        const requester = getUserInfo(requesterId);
+        // "Others" are participants excluding the requester
+        const othersIds = participants.filter(id => id !== requesterId);
+
+        return (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {/* Requester Avatar (Main) */}
+                <div style={{ width: '24px', height: '24px', borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--primary)' }}>
+                    <img
+                        src={requester.avatar_url || `https://ui-avatars.com/api/?name=${requester.name || 'User'}&background=random`}
+                        alt={requester.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                </div>
+
+                {othersIds.length > 0 && (
+                    <>
+                        <div style={{ width: '1px', height: '14px', background: 'var(--text-secondary)', opacity: 0.3 }}></div>
+
+                        {/* Stacked Others */}
+                        <div style={{ display: 'flex', paddingLeft: '4px' }}>
+                            {othersIds.map((uid, idx) => {
+                                const u = getUserInfo(uid);
+                                return (
+                                    <div key={uid} style={{
+                                        width: '20px', height: '20px', borderRadius: '50%', overflow: 'hidden',
+                                        border: '1px solid white', marginLeft: idx === 0 ? 0 : '-8px',
+                                        zIndex: 10 - idx
+                                    }}>
+                                        <img
+                                            src={u.avatar_url || `https://ui-avatars.com/api/?name=${u.name || 'User'}&background=random`}
+                                            alt={u.name}
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
+            </div>
+        );
+    };
 
     // Helper for Status
     const getStatusConfig = (s) => {
@@ -40,6 +92,15 @@ const TabOrderList = ({ myOrders, othersOrders, showAll, setShowAll, resolveName
             ) : (
                 myOrders.map(item => {
                     const statusConfig = getStatusConfig(item.status);
+
+                    // Logic for Split Tag
+                    const isSplit = item.is_split && item.split_parts > 1;
+                    const cleanName = isSplit
+                        ? item.name.replace(/^\d+\s*\/\s*\d+\s+(.*)/, '$1').replace(/^\d+\s*\/\s*\d+\s+/, '')
+                        : item.name;
+
+                    const participants = item.split_participants || (isSplit ? [] : []);
+
                     return (
                         <div
                             key={item.id}
@@ -51,31 +112,49 @@ const TabOrderList = ({ myOrders, othersOrders, showAll, setShowAll, resolveName
                             }}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                                <span style={{ fontWeight: '600', fontSize: '1rem' }}>{item.quantity}x {item.name}</span>
+                                <span style={{ fontWeight: '600', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    {item.quantity}x
+                                    {isSplit && (
+                                        <span style={{
+                                            fontSize: '0.7rem',
+                                            background: '#374151',
+                                            color: '#f9fafb',
+                                            padding: '1px 6px',
+                                            borderRadius: '4px',
+                                            fontWeight: '400',
+                                            verticalAlign: 'middle',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            height: '18px',
+                                            marginRight: '2px'
+                                        }}>
+                                            1/{item.split_parts}
+                                        </span>
+                                    )}
+                                    {cleanName}
+                                </span>
                                 <span style={{ fontWeight: '700' }}>{formatPrice(getDisplayPrice(item) * item.quantity)}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <span style={{
-                                    fontSize: '0.8rem',
-                                    color: 'var(--primary)',
-                                    fontWeight: 'bold'
-                                }}>
-                                    Você
-                                </span>
+                                <AvatarStack requesterId={item.split_requester || item.ordered_by} participants={participants} />
+
                                 <span style={{
                                     fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px',
                                     backgroundColor: statusConfig.bg,
                                     color: statusConfig.color,
-                                    fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px'
+                                    fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px',
+                                    marginLeft: 'auto'
                                 }}>
                                     {statusConfig.label}
                                 </span>
-                                <span style={{
-                                    marginLeft: 'auto', fontSize: '0.7rem', color: 'var(--text-secondary)',
-                                    border: '1px solid var(--text-secondary)', padding: '2px 6px', borderRadius: '4px'
-                                }}>
-                                    DIVIDIR
-                                </span>
+                                {!isSplit && (
+                                    <span style={{
+                                        fontSize: '0.7rem', color: 'var(--text-secondary)',
+                                        border: '1px solid var(--text-secondary)', padding: '2px 6px', borderRadius: '4px'
+                                    }}>
+                                        DIVIDIR
+                                    </span>
+                                )}
                             </div>
                         </div>
                     );
@@ -107,29 +186,49 @@ const TabOrderList = ({ myOrders, othersOrders, showAll, setShowAll, resolveName
                     {showAll && (
                         <div style={{ display: 'grid', gap: '1rem', animation: 'fadeIn 0.3s' }}>
                             {othersOrders.map(item => {
-                                const displayName = resolveName(item.ordered_by);
                                 const statusConfig = getStatusConfig(item.status);
+                                const isSplit = item.is_split && item.split_parts > 1;
+                                const cleanName = isSplit
+                                    ? item.name.replace(/^\d+\s*\/\s*\d+\s+(.*)/, '$1').replace(/^\d+\s*\/\s*\d+\s+/, '')
+                                    : item.name;
+                                const participants = item.split_participants || [];
 
                                 return (
                                     <div key={item.id} className="card" style={{ marginBottom: 0, opacity: 0.85, background: 'var(--bg-tertiary)' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                                            <span style={{ fontWeight: '600', fontSize: '1rem' }}>{item.quantity}x {item.name}</span>
+                                            <span style={{ fontWeight: '600', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                {item.quantity}x
+                                                {isSplit && (
+                                                    <span style={{
+                                                        fontSize: '0.7rem',
+                                                        background: '#374151',
+                                                        color: '#f9fafb',
+                                                        padding: '1px 6px',
+                                                        borderRadius: '4px',
+                                                        fontWeight: '400',
+                                                        verticalAlign: 'middle',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        height: '18px',
+                                                        marginRight: '2px'
+                                                    }}>
+                                                        1/{item.split_parts}
+                                                    </span>
+                                                )}
+                                                {cleanName}
+                                            </span>
                                             <span style={{ fontWeight: '700', color: 'var(--text-secondary)' }}>{formatPrice(getDisplayPrice(item) * item.quantity)}</span>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <span style={{
-                                                fontSize: '0.8rem',
-                                                color: 'var(--text-secondary)',
-                                                fontWeight: 'normal'
-                                            }}>
-                                                {displayName}
-                                            </span>
+                                            <AvatarStack requesterId={item.split_requester || item.ordered_by} participants={participants} />
+
                                             <span style={{
                                                 fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px',
                                                 backgroundColor: 'var(--bg-secondary)', // Neutral for others
                                                 color: statusConfig.color,
                                                 fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px',
-                                                border: '1px solid rgba(0,0,0,0.05)'
+                                                border: '1px solid rgba(0,0,0,0.05)',
+                                                marginLeft: 'auto'
                                             }}>
                                                 {statusConfig.label}
                                             </span>
@@ -137,13 +236,6 @@ const TabOrderList = ({ myOrders, othersOrders, showAll, setShowAll, resolveName
                                     </div>
                                 );
                             })}
-                            <div style={{
-                                borderTop: '1px dashed var(--bg-tertiary)', margin: '1rem 0 0 0', padding: '1rem 0 0 0',
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-secondary)'
-                            }}>
-                                <span>Total dos itens da mesa</span>
-                                <span><strong>{formatPrice(othersSubtotal)} + taxas</strong></span>
-                            </div>
                         </div>
                     )}
                 </div>

@@ -5,7 +5,7 @@ const SplitRequestModal = ({ request, onAccept, onDecline }) => {
 
     return (
         <div style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 99999,
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 2147483647,
             display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
         }}>
             <div style={{

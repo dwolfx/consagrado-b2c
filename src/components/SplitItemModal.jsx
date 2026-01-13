@@ -8,6 +8,7 @@ const SplitItemModal = ({
     onClose,
     onConfirm,
     initialSelectedUsers = [],
+    disabledUsers = [],
     confirmLabel = 'Confirmar Divisão'
 }) => {
     // Safeguard hook initialization
@@ -29,7 +30,10 @@ const SplitItemModal = ({
     if (!item) return null;
 
     const safeOnlineUsers = Array.isArray(onlineUsers) ? onlineUsers : [safeUser];
-    const itemPrice = typeof item.price === 'number' ? item.price : 0;
+
+    // Logic to show "Whole Pizza" details
+    const cleanName = item.name ? item.name.replace(/^[\d.]+\/[\d.]+\s/, '') : 'Item';
+    const totalDisplayPrice = item.original_price ? Number(item.original_price) : (typeof item.price === 'number' ? item.price : 0);
 
     const toggleUser = (userId) => {
         setSelectedUsers(prev => {
@@ -84,9 +88,9 @@ const SplitItemModal = ({
                 </div>
 
                 <div style={{ padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 'bold' }}>{item.name || 'Item'}</span>
+                    <span style={{ fontWeight: 'bold' }}>{cleanName}</span>
                     <span style={{ color: 'var(--primary)' }}>
-                        {itemPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        {totalDisplayPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
                 </div>
 
@@ -107,23 +111,37 @@ const SplitItemModal = ({
                                 if (!u) return null;
                                 const isSelected = selectedUsers.includes(u.id);
                                 const isSelf = u.id === safeUser.id;
-                                const splitPrice = itemPrice / (selectedUsers.length || 1);
+                                const isDisabled = disabledUsers.includes(u.id) && !isSelf; // Don't disable self if I'm the owner splitting further
+                                const splitPrice = totalDisplayPrice / (selectedUsers.length || 1);
 
                                 return (
-                                    <div key={u.id || Math.random()} onClick={() => u.id && toggleUser(u.id)} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative' }}>
+                                    <div
+                                        key={u.id || Math.random()}
+                                        onClick={() => !isDisabled && u.id && toggleUser(u.id)}
+                                        style={{
+                                            cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative',
+                                            opacity: isDisabled ? 0.4 : 1,
+                                            pointerEvents: isDisabled ? 'none' : 'auto'
+                                        }}
+                                    >
                                         <div style={{
                                             width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden',
                                             border: isSelected ? '3px solid var(--primary)' : '3px solid transparent',
-                                            opacity: isSelected ? 1 : 0.5,
+                                            opacity: isSelected ? 1 : (isDisabled ? 1 : 0.5),
                                             transition: 'all 0.2s',
-                                            boxShadow: isSelected ? '0 4px 12px var(--primary-glow)' : 'none'
+                                            boxShadow: isSelected ? '0 4px 12px var(--primary-glow)' : 'none',
+                                            filter: isDisabled ? 'grayscale(100%)' : 'none'
                                         }}>
                                             <img src={u.avatar_url || `https://ui-avatars.com/api/?name=${u.name || 'User'}&background=random`} alt={u.name} style={{ width: '100%', height: '100%' }} />
                                         </div>
                                         <span style={{ fontSize: '0.75rem', fontWeight: isSelected ? 'bold' : 'normal', textAlign: 'center', color: isSelected ? 'white' : 'var(--text-secondary)' }}>
                                             {isSelf ? 'Eu' : (u.name || 'User').split(' ')[0]}
                                         </span>
-                                        {isSelected && (
+                                        {isDisabled && (
+                                            <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', marginTop: -2 }}>Já divide</span>
+                                        )}
+                                        {isSelected && !isDisabled && (
                                             <div style={{
                                                 position: 'absolute', top: '-6px', right: '-6px',
                                                 background: '#22c55e', color: 'white',
@@ -144,7 +162,7 @@ const SplitItemModal = ({
                 <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: '16px', marginBottom: '1rem', textAlign: 'center', border: '1px solid var(--border-color)' }}>
                     <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Total por pessoa</p>
                     <p style={{ margin: '4px 0 0 0', fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>
-                        {(itemPrice / (selectedUsers.length || 1)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        {(totalDisplayPrice / (selectedUsers.length || 1)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </p>
                 </div>
 

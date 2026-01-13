@@ -1,122 +1,25 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, AlertTriangle, X } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { api } from '../services/api';
-import { useAuth } from '../context/AuthContext';
-import { useTableContext } from '../context/TableContext';
-import PaymentSkeleton from '../components/PaymentSkeleton';
+import PaymentSkeleton from '../../components/PaymentSkeleton';
+import { usePaymentLogic } from './hooks/usePaymentLogic';
 
 const Payment = () => {
     const navigate = useNavigate();
-    const { user } = useAuth();
-    const { setTableId } = useTableContext();
-    const [success, setSuccess] = useState(false);
-    const [loading, setLoading] = useState(true);
-    const [subtotal, setSubtotal] = useState(0);
-    const [myOrders, setMyOrders] = useState([]); // Store items for review
-
-    // Logic State
-    const [serviceFeePercent, setServiceFeePercent] = useState(10); // 8, 10, 13
-    const [removeFeeReason, setRemoveFeeReason] = useState('');
-    const [showRemoveModal, setShowRemoveModal] = useState(false);
-    const [feeRemoved, setFeeRemoved] = useState(false);
-
-    // const appFee = 1.99; // Moved to conditional logic
-
-    useEffect(() => {
-        const loadPaymentData = async () => {
-            const tableId = localStorage.getItem('my_table_id');
-            if (!tableId) {
-                // If no table, maybe just showing 0 or redirect
-                setLoading(false);
-                return;
-            }
-
-            try {
-                const tableData = await api.getTable(tableId);
-                const orders = tableData?.orders || [];
-
-                // Filter my orders (Using UUID now!)
-                // Filter my orders: UUID match AND NOT PAID
-                const myId = user?.id;
-                const myOrders = orders.filter(o =>
-                    (o.ordered_by === myId) &&
-                    (o.status !== 'paid') && // CRITICAL: Exclude previously paid items
-                    (o.status !== 'service_call') // Exclude service calls from payment
-                );
-
-                // Helper to ensure split price correctness
-                const getDisplayPrice = (item) => {
-                    if (item.is_split && item.split_parts > 1 && item.original_price > 0) {
-                        return Number(item.original_price) / item.split_parts;
-                    }
-                    return Number(item.price);
-                };
-
-                const myTotal = myOrders.reduce((acc, item) => acc + (getDisplayPrice(item) * item.quantity), 0);
-                setSubtotal(myTotal);
-
-                // Store items with corrected price for display
-                const ordersWithCorrectedPrice = myOrders.map(o => ({
-                    ...o,
-                    price: getDisplayPrice(o) // Override price with calculated one for UI
-                }));
-                setMyOrders(ordersWithCorrectedPrice);
-            } catch (error) {
-                console.error("Error loading payment info", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        loadPaymentData();
-    }, [user]); // user dependency to ensure name is ready
-
-    // Fees Logic
-    const [showFeeInfo, setShowFeeInfo] = useState(false);
-    const [showItemsInfo, setShowItemsInfo] = useState(false);
-    const applicableAppFee = subtotal > 0 ? 1.99 : 0;
-
-    // "Gorjeta" (Waitstaff Tip) - formerly serviceFee
-    const tipValue = subtotal * (serviceFeePercent / 100);
-    const displayedTip = feeRemoved ? 0 : tipValue;
-
-    // "Taxa de Serviço" (Operational = Machine 4% + App 1.99)
-    // Machine Fee applies to everything paid
-    const machineFeeValue = (subtotal + displayedTip) * 0.04;
-    const operationalFeeValue = machineFeeValue + applicableAppFee;
-
-    const total = subtotal + displayedTip + operationalFeeValue;
-
-    const handleRemoveFee = () => {
-        if (removeFeeReason.trim().length < 5) {
-            alert("Por favor, explique o motivo.");
-            return;
-        }
-        setFeeRemoved(true);
-        setShowRemoveModal(false);
-    };
-
-    const handlePayment = async () => {
-        setLoading(true);
-        // Simulate payment delay
-        await new Promise(r => setTimeout(r, 1500));
-
-        // Create History Record (Mark as Paid)
-        const tableId = localStorage.getItem('my_table_id');
-        if (tableId && user?.id) {
-            await api.payUserOrders(tableId, user.id);
-        }
-
-        setSuccess(true);
-        setLoading(false);
-        // We do NOT clear localStorage here yet, to keep the receipt "branded"
-        // We will clear it when they click "Back to Home"
-    };
+    const {
+        success, loading,
+        subtotal, myOrders, total,
+        serviceFeePercent, setServiceFeePercent,
+        removeFeeReason, setRemoveFeeReason,
+        feeRemoved,
+        showFeeInfo, setShowFeeInfo,
+        showItemsInfo, setShowItemsInfo,
+        showRemoveModal, setShowRemoveModal,
+        tipValue, displayedTip, machineFeeValue, operationalFeeValue, applicableAppFee,
+        handleRemoveFee, handlePayment, setTableId
+    } = usePaymentLogic();
 
     if (success) {
-        // Generate a random hash for the receipt
         const receiptHash = Math.random().toString(36).substring(2, 10).toUpperCase();
-
         return (
             <div className="container" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem' }}>
                 <div style={{
@@ -134,7 +37,6 @@ const Payment = () => {
                         Apresente este código na saída se solicitado.
                     </p>
 
-                    {/* FAKE QR CODE FOR DEMO */}
                     <div style={{
                         background: 'white', padding: '1rem', borderRadius: '12px',
                         margin: '1rem 0', width: '200px', height: '200px',
@@ -187,7 +89,6 @@ const Payment = () => {
                 <h2 style={{ margin: 0 }}>Pagamento</h2>
             </header>
 
-            {/* Bill Breakdown */}
             <div className="card">
                 <h3 style={{ marginBottom: '1rem' }}>Resumo</h3>
 
@@ -207,7 +108,6 @@ const Payment = () => {
                     <span>{subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </div>
 
-                {/* Taxa de Serviço (Operational) */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-secondary)', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <span>Taxa de Serviço</span>
@@ -224,15 +124,11 @@ const Payment = () => {
                     <span>{operationalFeeValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </div>
 
-                {/* Gratificação Selection (Formerly Gorjeta) */}
                 <div style={{ marginBottom: '1rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                         <span>Gratificação da Equipe ({feeRemoved ? 'removida' : `${serviceFeePercent}%`})</span>
                         <span>
-                            {feeRemoved
-                                ? 'R$ 0,00'
-                                : tipValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                            }
+                            {feeRemoved ? 'R$ 0,00' : tipValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                         </span>
                     </div>
 
@@ -267,7 +163,6 @@ const Payment = () => {
                     )}
                 </div>
 
-                {/* Total */}
                 <div style={{ borderTop: '1px solid var(--bg-tertiary)', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Total</span>
                     <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>
@@ -279,34 +174,22 @@ const Payment = () => {
             <h3 style={{ marginBottom: '1rem' }}>Forma de Pagamento</h3>
 
             <div style={{ display: 'grid', gap: '1rem', paddingBottom: '2rem' }}>
-                <button className="btn btn-secondary" onClick={handlePayment}>
-                    PIX
-                </button>
-                <button className="btn btn-secondary" onClick={handlePayment}>
-                    Cartão de Crédito
-                </button>
-                <button className="btn btn-secondary" onClick={handlePayment}>
-                    Apple Pay
-                </button>
+                <button className="btn btn-secondary" onClick={handlePayment}>PIX</button>
+                <button className="btn btn-secondary" onClick={handlePayment}>Cartão de Crédito</button>
+                <button className="btn btn-secondary" onClick={handlePayment}>Apple Pay</button>
             </div>
 
-            {/* Remove Fee Modal */}
             {showRemoveModal && (
-                <div style={{
-                    position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem'
-                }}>
+                <div style={modalOverlayStyle}>
                     <div className="card" style={{ width: '100%', maxWidth: '360px', margin: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                             <h3>Remover Gratificação</h3>
                             <button onClick={() => setShowRemoveModal(false)} className="btn-ghost" style={{ width: 'auto' }}><X /></button>
                         </div>
-
                         <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', padding: '1rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'start' }}>
                             <AlertTriangle size={20} style={{ flexShrink: 0 }} />
                             <p style={{ fontSize: '0.9rem' }}>A gratificação vai integralmente para a equipe de atendimento.</p>
                         </div>
-
                         <label style={{ display: 'block', marginBottom: '0.5rem' }}>Por que deseja remover?</label>
                         <textarea
                             className="input-field"
@@ -315,111 +198,58 @@ const Payment = () => {
                             value={removeFeeReason}
                             onChange={(e) => setRemoveFeeReason(e.target.value)}
                         />
-
-                        <button
-                            onClick={handleRemoveFee}
-                            className="btn btn-primary"
-                            style={{ marginTop: '1rem', background: 'var(--danger)' }}
-                        >
+                        <button onClick={handleRemoveFee} className="btn btn-primary" style={{ marginTop: '1rem', background: 'var(--danger)' }}>
                             Confirmar Remoção
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* TAX INFO MODAL */}
             {showFeeInfo && (
-                <div style={{
-                    position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)',
-                    display: 'flex', alignItems: 'end', justifyContent: 'center', zIndex: 110, padding: 0
-                }} onClick={() => setShowFeeInfo(false)}>
-                    <div style={{
-                        width: '100%', maxWidth: '480px',
-                        backgroundColor: 'var(--bg-secondary)',
-                        borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
-                        padding: '2rem', animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                        position: 'relative'
-                    }} onClick={e => e.stopPropagation()}>
-
-                        <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '2px', margin: '0 auto 2rem auto' }}></div>
-
+                <div style={bottomSheetOverlayStyle} onClick={() => setShowFeeInfo(false)}>
+                    <div style={bottomSheetStyle} onClick={e => e.stopPropagation()}>
+                        <div style={handleStyle}></div>
                         <h3 style={{ marginBottom: '1.5rem' }}>Entenda as Taxas</h3>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid var(--bg-tertiary)' }}>
-                            <span>Taxa Maquininha (4%)</span>
-                            <span>{machineFeeValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid var(--bg-tertiary)' }}>
-                            <span>Taxa do App (Fixo)</span>
-                            <span>{applicableAppFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem 0', fontWeight: 'bold' }}>
-                            <span>Total Taxa de Serviço</span>
-                            <span>{operationalFeeValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
-                        </div>
-
-                        <button
-                            onClick={() => setShowFeeInfo(false)}
-                            className="btn btn-primary"
-                            style={{ marginTop: '1rem' }}>
-                            Entendi
-                        </button>
+                        <div style={rowStyle}><span>Taxa Maquininha (4%)</span><span>{machineFeeValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+                        <div style={rowStyle}><span>Taxa do App (Fixo)</span><span>{applicableAppFee.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem 0', fontWeight: 'bold' }}><span>Total Taxa de Serviço</span><span>{operationalFeeValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+                        <button onClick={() => setShowFeeInfo(false)} className="btn btn-primary" style={{ marginTop: '1rem' }}>Entendi</button>
                     </div>
                 </div>
             )}
 
-            {/* ITEMS INFO MODAL */}
             {showItemsInfo && (
-                <div style={{
-                    position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)',
-                    display: 'flex', alignItems: 'end', justifyContent: 'center', zIndex: 110, padding: 0
-                }} onClick={() => setShowItemsInfo(false)}>
-                    <div style={{
-                        width: '100%', maxWidth: '480px',
-                        backgroundColor: 'var(--bg-secondary)',
-                        borderTopLeftRadius: '24px', borderTopRightRadius: '24px',
-                        padding: '2rem', animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                        position: 'relative', maxHeight: '80vh', display: 'flex', flexDirection: 'column'
-                    }} onClick={e => e.stopPropagation()}>
-
-                        <div style={{ width: '40px', height: '4px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '2px', margin: '0 auto 1.5rem auto', flexShrink: 0 }}></div>
-
+                <div style={bottomSheetOverlayStyle} onClick={() => setShowItemsInfo(false)}>
+                    <div style={{ ...bottomSheetStyle, maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                        <div style={handleStyle}></div>
                         <h3 style={{ marginBottom: '1rem', flexShrink: 0 }}>Seu Consumo</h3>
-
                         <div style={{ overflowY: 'auto', flex: 1, marginBottom: '1rem' }}>
-                            {myOrders.length === 0 ? (
-                                <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>Nenhum item encontrado.</p>
-                            ) : (
+                            {myOrders.length === 0 ? <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>Nenhum item encontrado.</p> :
                                 myOrders.map((item, idx) => (
                                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px dashed var(--bg-tertiary)' }}>
-                                        <div>
-                                            <span style={{ fontWeight: 'bold', marginRight: '0.5rem' }}>{item.quantity}x</span>
-                                            <span>{item.name}</span>
-                                        </div>
+                                        <div><span style={{ fontWeight: 'bold', marginRight: '0.5rem' }}>{item.quantity}x</span><span>{item.name}</span></div>
                                         <span>{(item.price * item.quantity).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                                     </div>
                                 ))
-                            )}
+                            }
                         </div>
-
                         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem 0', fontWeight: 'bold', borderTop: '2px solid var(--bg-tertiary)', flexShrink: 0 }}>
                             <span>Total Itens</span>
                             <span>{subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                         </div>
-
-                        <button
-                            onClick={() => setShowItemsInfo(false)}
-                            className="btn btn-primary"
-                            style={{ marginTop: '0.5rem', flexShrink: 0 }}>
-                            Fechar
-                        </button>
+                        <button onClick={() => setShowItemsInfo(false)} className="btn btn-primary" style={{ marginTop: '0.5rem', flexShrink: 0 }}>Fechar</button>
                     </div>
                 </div>
             )}
-
         </div>
     );
 };
+
+// Styles
+const modalOverlayStyle = { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' };
+const bottomSheetOverlayStyle = { position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'end', justifyContent: 'center', zIndex: 110, padding: 0 };
+const bottomSheetStyle = { width: '100%', maxWidth: '480px', backgroundColor: 'var(--bg-secondary)', borderTopLeftRadius: '24px', borderTopRightRadius: '24px', padding: '2rem', animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)', position: 'relative' };
+const handleStyle = { width: '40px', height: '4px', backgroundColor: 'var(--bg-tertiary)', borderRadius: '2px', margin: '0 auto 1.5rem auto', flexShrink: 0 };
+const rowStyle = { display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0', borderBottom: '1px solid var(--bg-tertiary)' };
 
 export default Payment;

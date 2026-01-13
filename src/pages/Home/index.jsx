@@ -1,87 +1,24 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useTableContext } from '../context/TableContext';
-import { useToast } from '../context/ToastContext';
+import { useToast } from '../../context/ToastContext';
+import { api } from '../../services/api';
 import { Receipt, MapPin, LogOut, Camera, History, Utensils, Bell, ChevronRight, Keyboard, Beer, X } from 'lucide-react';
-import { api, supabase } from '../services/api';
-import TableUsersModal from '../components/TableUsersModal';
+import TableUsersModal from '../../components/TableUsersModal';
+import { useHomeLogic } from './hooks/useHomeLogic';
 
 const Home = () => {
-    const { user, logout } = useAuth();
     const navigate = useNavigate();
     const { addToast } = useToast();
-    const { tableId, establishment, onlineUsers, setTableId } = useTableContext();
-    const [statusBadge, setStatusBadge] = useState(null); // { label, color, bg }
-    const [showManualInput, setShowManualInput] = useState(false);
-    const [manualCode, setManualCode] = useState('');
-    const [showUsersModal, setShowUsersModal] = useState(false);
 
-    const handleManualSubmit = async () => {
-        if (!manualCode) return;
-        try {
-            const table = await api.getTableByCode(manualCode);
-            if (table && table.id) {
-                setTableId(table.id);
-                // No need to navigate, just state update re-renders Home with table view
-            } else {
-                addToast('Mesa não encontrada!', 'error');
-            }
-        } catch (e) {
-            console.error(e);
-            addToast('Erro ao buscar mesa.', 'error');
-        }
-    };
-
-    // Fetch active orders count for status tag
-    useEffect(() => {
-        if (!tableId || !user) return;
-
-        const fetchStatus = async () => {
-            // Check for 'preparing' first (priority)
-            const { count: prepCount } = await supabase
-                .from('orders')
-                .select('*', { count: 'exact', head: true })
-                .eq('table_id', tableId)
-                .eq('ordered_by', user.id)
-                .eq('status', 'preparing');
-
-            if (prepCount > 0) {
-                setStatusBadge({ label: 'Em Preparo', color: '#1d4ed8', bg: '#dbeafe' }); // Blue
-                return;
-            }
-
-            // Check for 'pending' (excluding service calls)
-            const { count: pendCount } = await supabase
-                .from('orders')
-                .select('*', { count: 'exact', head: true })
-                .eq('table_id', tableId)
-                .eq('ordered_by', user.id)
-                .eq('status', 'pending')
-                .neq('name', '🔔 CHAMAR GARÇOM'); // Extra safety for legacy
-
-            if (pendCount > 0) {
-                setStatusBadge({ label: 'Aguardando', color: '#b45309', bg: '#fef3c7' }); // Yellow
-                return;
-            }
-
-            setStatusBadge(null);
-        };
-
-        fetchStatus();
-
-        // Subscribe to changes
-        const channel = supabase.channel(`home_status:${user.id}`)
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `table_id=eq.${tableId}` }, fetchStatus)
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, [tableId, user]);
-
-
-    const userFirstName = user?.name?.split(' ')[0] || 'Visitante';
+    // Custom Hook
+    const {
+        user, logout, userFirstName,
+        tableId, establishment, onlineUsers,
+        statusBadge,
+        showManualInput, setShowManualInput,
+        manualCode, setManualCode,
+        showUsersModal, setShowUsersModal,
+        handleManualSubmit
+    } = useHomeLogic();
 
     return (
         <div className="container fade-in">
@@ -119,9 +56,6 @@ const Home = () => {
                 </button>
             </header>
 
-            {/* ... rest of component ... */}
-            {/* Note: Skipped irrelevant parts for brevity in this replacement block, but need to reach the badge render area */}
-
             <main style={{ display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1 }}>
                 {tableId ? (
                     <>
@@ -140,9 +74,6 @@ const Home = () => {
                                 <MapPin size={16} /> Mesa {tableId}
                             </span>
 
-                            {/* Avatar Stack logic remains same but checking if previous tool context needs it... we can rely on existing code if we don't touch it. 
-                                Wait, I am using replace_file_content with a range. I should overlap correctly.
-                            */}
                             {onlineUsers.length > 1 && (
                                 <div
                                     onClick={() => setShowUsersModal(true)}
@@ -167,7 +98,7 @@ const Home = () => {
                             )}
                         </div>
 
-                        {/* 1. CARDÁPIO (Fazer Pedido) */}
+                        {/* 1. CARDÁPIO */}
                         <button
                             onClick={() => navigate('/menu')}
                             className="btn btn-primary"
@@ -182,8 +113,7 @@ const Home = () => {
                             Fazer Pedido
                         </button>
 
-                        {/* 2. CHAMAR GARÇOM (Warning/Red) */}
-                        {/* 2. CHAMAR GARÇOM (Emergency/Red) */}
+                        {/* 2. CHAMAR GARÇOM */}
                         <button
                             onClick={async () => {
                                 if (window.confirm('Chamar atendimento na mesa?')) {
@@ -193,12 +123,12 @@ const Home = () => {
                             }}
                             className="btn"
                             style={{
-                                background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)', // Brighter Red Gradient
+                                background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
                                 color: 'white', border: 'none',
                                 padding: '1.25rem', justifyContent: 'center',
                                 fontSize: '1.2rem', fontWeight: 700, gap: '10px',
                                 textTransform: 'uppercase',
-                                boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)' // Red Glow
+                                boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)'
                             }}
                         >
                             <Bell size={24} />
@@ -245,7 +175,6 @@ const Home = () => {
                                 <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Pagar</span>
                             </button>
                         </div>
-
                     </>
                 ) : (
                     <>

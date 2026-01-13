@@ -13,30 +13,12 @@ export const NotificationProvider = ({ children }) => {
     const { addToast } = useToast();
     const [incomingRequest, setIncomingRequest] = useState(null);
 
+    // 1. User Channel (Global - independent of Table)
     useEffect(() => {
-        if (!user || !tableId) return;
+        if (!user) return;
 
-        // 1. Table Channel (Broadcasts like "Someone wants to split bill")
-        // Kept for backward compatibility or other table-wide events
-        const tableChannel = supabase.channel(`table_notifications:${tableId}`)
-            .on('broadcast', { event: 'request_split' }, (payload) => {
-                const { targetIds, orderId, itemName, requesterName, requesterId } = payload.payload;
-                if (targetIds && targetIds.includes(user.id)) {
-                    setIncomingRequest({
-                        id: Date.now(),
-                        type: 'split_bill',
-                        orderId,
-                        itemName,
-                        requesterName,
-                        requesterId,
-                        targetIds
-                    });
-                }
-            })
-            .subscribe();
+        console.log("🔌 [NotificationContext] Connecting User Channel:", user.id);
 
-        // 2. User Channel (Direct requests like "Share this order?")
-        // This is the primary channel for the new split flow
         const userChannel = supabase.channel(`user_notifications:${user.id}`)
             .on('broadcast', { event: 'request_split' }, (payload) => {
                 console.log("🔥 NotificationContext received SPLIT request:", payload);
@@ -52,65 +34,93 @@ export const NotificationProvider = ({ children }) => {
                     targetIds
                 });
             })
+            .on('broadcast', { event: 'split_response' }, async (payload) => {
+                const { status, responderName, splitMetadata } = payload.payload;
+
+                // I am the REQUESTER (User A). The Responder (User B) just said YES/NO.
+                if (status === 'accepted') {
+                    addToast(`${responderName} aceitou dividir! Processando...`, 'info');
+
+                    if (splitMetadata) {
+                        const { orderId, targetIds } = splitMetadata;
+                        const fullOrder = await api.getOrder(orderId);
+                        if (fullOrder && fullOrder.ordered_by === user.id) {
+                            const success = await api.splitOrder(fullOrder, targetIds);
+                            if (success) {
+                                addToast("Divisão concluída com sucesso!", "success");
+                            } else {
+                                addToast("Erro ao processar divisão.", "error");
+                            }
+                        }
+                    }
+                } else {
+                    addToast(`${responderName} recusou a divisão.`, 'warning');
+                }
+            })
             .on('broadcast', { event: 'request_order_share' }, (payload) => {
-                console.log("🔥 NotificationContext received SHARE request:", payload);
                 const { itemDetails, targetUserId, requesterName, requesterId } = payload.payload;
-
-                console.log("🔥 RECEIVER RAW ITEM:", itemDetails); // DEBUG PRICE
-
-                // Verify this message is actually for us (redundant but safe)
                 if (targetUserId === user.id) {
                     setIncomingRequest({
                         id: Date.now(),
                         type: 'join_order',
-                        itemDetails, // { name, price, quantity, tableId }
+                        itemDetails,
                         itemName: itemDetails.name,
                         requesterName,
                         requesterId
                     });
                 }
             })
-            .subscribe((status) => {
-                console.log(`📡 [NotificationContext] User Channel Status (${user.id}):`, status);
-            });
-
-        // 3. Orders Status Channel (Real-time Food Updates)
-        const orderChannel = supabase.channel(`orders_status:${user.id}`)
-            .on(
-                'postgres_changes',
-                {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'orders',
-                    filter: `ordered_by=eq.${user.id}`
-                },
-                (payload) => {
-                    const newStatus = payload.new.status;
-                    const oldStatus = payload.old.status;
-                    const itemName = payload.new.name;
-
-                    // Only notify on meaningful status changes forward
-                    if (newStatus !== oldStatus) {
-                        if (newStatus === 'preparing') {
-                            addToast(`👨‍🍳 Preparando: ${itemName}`, 'info');
-                        } else if (newStatus === 'ready') {
-                            addToast(`✅ Pronto: ${itemName}`, 'success');
-                        } else if (newStatus === 'delivered') {
-                            addToast(`🚀 Entregue: ${itemName}`, 'success');
-                        }
-                    }
-                }
-            )
             .subscribe();
 
-        console.log("🔌 [NotificationContext] Subscribing channels for:", { uid: user.id, tid: tableId });
+        // Orders Status Channel (User specific)
+        const orderChannel = supabase.channel(`orders_status:${user.id}`)
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: `ordered_by=eq.${user.id}` }, (payload) => {
+                const newStatus = payload.new.status;
+                const oldStatus = payload.old.status;
+                const itemName = payload.new.name;
+                if (newStatus !== oldStatus) {
+                    if (newStatus === 'preparing') addToast(`👨‍🍳 Preparando: ${itemName}`, 'info');
+                    else if (newStatus === 'ready') addToast(`✅ Pronto: ${itemName}`, 'success');
+                    else if (newStatus === 'delivered') addToast(`🚀 Entregue: ${itemName}`, 'success');
+                }
+            })
+            .subscribe();
 
         return () => {
-            supabase.removeChannel(tableChannel);
             supabase.removeChannel(userChannel);
             supabase.removeChannel(orderChannel);
         };
-    }, [user, tableId]);
+    }, [user]);
+
+    // 2. Table Channel (Requires Table ID)
+    useEffect(() => {
+        if (!tableId) return;
+
+        const tableChannel = supabase.channel(`table_notifications:${tableId}`)
+            .on('broadcast', { event: 'request_split' }, (payload) => {
+                // Legacy Table Broadcast listener (Backup)
+                const { targetIds, orderId, itemName, requesterName, requesterId } = payload.payload;
+                if (targetIds && targetIds.includes(user?.id)) {
+                    setIncomingRequest(prev => {
+                        if (prev && prev.orderId === orderId) return prev; // Dedup
+                        return {
+                            id: Date.now(),
+                            type: 'split_bill',
+                            orderId,
+                            itemName,
+                            requesterName,
+                            requesterId,
+                            targetIds
+                        };
+                    });
+                }
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(tableChannel);
+        };
+    }, [tableId, user]);
 
     const handleAccept = async () => {
         console.log("🟢 handleAccept CLICKED", { incomingRequest, tableId });
@@ -124,16 +134,22 @@ export const NotificationProvider = ({ children }) => {
 
         try {
             if (req.type === 'split_bill') {
-                const fullOrder = await api.getOrder(req.orderId);
-                if (fullOrder) {
-                    const allParticipants = [req.requesterId, ...req.targetIds];
-                    const uniqueParticipants = [...new Set(allParticipants)];
+                // NEW FLOW: Send 'accepted' response to Requester. 
+                // Requester (Owner) performs the split.
 
-                    await api.splitOrder(fullOrder, uniqueParticipants);
-                    addToast("Divisão Aceita! Comanda atualizada.", "success");
-                } else {
-                    addToast("Pedido não encontrado ou já alterado.", "error");
-                }
+                const allParticipants = [req.requesterId, ...req.targetIds];
+                const uniqueParticipants = [...new Set(allParticipants)];
+
+                await api.sendSplitResponse(
+                    req.requesterId,
+                    'accepted',
+                    user.name || 'Alguém',
+                    {
+                        orderId: req.orderId,
+                        targetIds: uniqueParticipants
+                    }
+                );
+                addToast("Você aceitou! A divisão será processada.", "info");
             } else if (req.type === 'join_order') {
                 console.log("🚀 Processing Join Order. Requester:", req.requesterId, "[v3-SECURE-LOOP]");
 

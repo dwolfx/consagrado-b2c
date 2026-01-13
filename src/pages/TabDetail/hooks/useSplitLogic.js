@@ -20,32 +20,53 @@ export const useSplitLogic = (visibleOrders = []) => {
             return;
         }
 
-        const isSplit = /^\d+\/\d+\s/.test(item.name);
+        const isSplit = item.is_split && item.split_parts > 1;
 
         if (isSplit) {
-            const siblings = visibleOrders.filter(o =>
-                o.product_id === item.product_id &&
-                o.name === item.name &&
-                Math.abs(o.price - item.price) < 0.01
-            );
+            // EDIT MODE: Find all parts of this split to redistribute
+            // Matching criteria: Same Table, Product, Requester, and roughly same time (5s tolerance)
+            const itemTime = new Date(item.created_at).getTime();
 
-            // FIX: Only treat as "Existing Split" (Edit Mode) if strictly > 1 person is involved.
-            // If it's just me with a "1/2 Pizza", I want to split it NEW with someone (trigger popup).
-            const distinctOwners = new Set(siblings.map(s => s.ordered_by));
+            const siblings = visibleOrders.filter(o => {
+                const oTime = new Date(o.created_at).getTime();
+                const timeDiff = Math.abs(oTime - itemTime);
 
-            if (siblings.length > 0 && distinctOwners.size > 1) {
-                const siblingUserIds = siblings.map(s => s.ordered_by);
-                setSelectedUsersToSplit(siblingUserIds);
+                return (
+                    o.is_split &&
+                    o.table_id === item.table_id &&
+                    o.product_id === item.product_id &&
+                    (o.split_requester === item.split_requester || o.split_requester === item.ordered_by) &&
+                    timeDiff < 5000 // 5 seconds tolerance for "same batch"
+                );
+            });
+
+            const currentParticipants = [...new Set(siblings.map(s => s.ordered_by))];
+
+            if (currentParticipants.length > 0) {
+                // Exclude myself from "Selected" in UI?
+                // No, for "Edit", checked means "In the group".
+                // SplitItemModal usually assumes "Selected = Target Users (excluding me)".
+                // Wait, SplitItemModal adds currentUser automatically to the group?
+                // Let's check SplitItemModal logic.
+                // It usually renders "Yourself" as fixed, and checkboxes for others.
+                // So "selectedUsersToSplit" should contain OTHER IDs.
+
+                const otherParticipants = currentParticipants.filter(id => id !== user.id);
+
+                console.log("✏️ Editing Split. Siblings:", siblings.length, "Participants:", currentParticipants);
+
+                setSelectedUsersToSplit(otherParticipants);
                 setRelatedSplitOrders(siblings);
                 setIsEditingSplit(true);
-                setSplitItem(item);
+                setSplitItem(item); // Pass the clicked item as "reference"
                 return;
             }
         }
 
         console.log("✨ Opening NEW split modal for:", item);
         setSplitItem(item);
-        setSelectedUsersToSplit([user?.id]);
+        // Clean start for new split
+        setSelectedUsersToSplit([]);
         setIsEditingSplit(false);
         setRelatedSplitOrders([]);
     };

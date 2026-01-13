@@ -1,6 +1,6 @@
-import { supabase } from '../supabase';
+import { supabase } from '../../supabase';
 
-export const tableApi = {
+export const tableQueries = {
     getTables: async () => {
         let { data, error } = await supabase
             .from('tables')

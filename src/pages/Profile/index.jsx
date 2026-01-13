@@ -1,169 +1,23 @@
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Phone, Mail, Shield, LogOut, Trash2, Edit, Save as SaveIcon, X, History, ChevronRight, Facebook } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import { useState } from 'react';
-import { supabase } from '../services/api';
-import { maskCPF } from '../utils/masks';
-import PhoneInput, { formatPhoneNumber } from 'react-phone-number-input';
+import { ArrowLeft, Edit, Save as SaveIcon, X, History, ChevronRight, Phone, Shield, Mail, Facebook, LogOut, Trash2 } from 'lucide-react';
+import { maskCPF } from '../../utils/masks';
 import 'react-phone-number-input/style.css';
-import '../styles/phone-input-overrides.css'; // We will create this for dark mode support
+import '../../styles/phone-input-overrides.css';
 
-const FieldEditor = ({
-    label, field, icon: Icon, value, isSelect, options, isPhone,
-    editing, startEdit, cancelEdit, saveField, setTempValue, tempValue, saving,
-    user, localCountry, setLocalCountry
-}) => {
-    const isEditingThis = editing === field;
-
-    // DISPLAY LOGIC
-    let displayValue = value;
-    if (field === 'phone' && value) displayValue = formatPhoneNumber(value);
-    if (field === 'cpf') displayValue = maskCPF(value);
-    if (field === 'country') {
-        const opt = options?.find(o => o.value === value);
-        displayValue = opt ? opt.label : value;
-    }
-
-    const handlePhoneChange = (val) => {
-        setTempValue(val);
-    };
-
-    const handleCountryChange = (countryCode) => {
-        if (countryCode) {
-            setLocalCountry(countryCode);
-        }
-    };
-
-    // Helper for non-phone inputs
-    const extractValue = (field, val) => {
-        if (field === 'cpf') return maskCPF(val);
-        return val;
-    }
-
-    return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-            <Icon size={20} color="var(--primary)" />
-            <div style={{ flex: 1 }}>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{label}</p>
-
-                {isEditingThis ? (
-                    isPhone ? (
-                        <div className="phone-input-container">
-                            <PhoneInput
-                                international
-                                defaultCountry={localCountry}
-                                value={tempValue}
-                                onChange={handlePhoneChange}
-                                onCountryChange={handleCountryChange}
-                                className="input-field"
-                                style={{ background: 'transparent', border: 'none', padding: 0, marginBottom: '0' }}
-                                autoFocus
-                            />
-                        </div>
-                    ) : isSelect ? (
-                        <select
-                            value={tempValue}
-                            onChange={e => setTempValue(e.target.value)}
-                            className="input-field"
-                            style={{ margin: 0, padding: '0.5rem', width: '100%', backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--bg-tertiary)' }}
-                        >
-                            {options.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                        </select>
-                    ) : (
-                        <input
-                            value={tempValue}
-                            onChange={e => setTempValue(extractValue(field, e.target.value))}
-                            className="input-field"
-                            style={{ margin: 0, padding: '0.5rem', flex: 1 }}
-                            autoFocus
-                        />
-                    )
-                ) : (
-                    <p>{displayValue || 'Não informado'}</p>
-                )}
-            </div>
-
-            {field !== 'cpf' && (
-                isEditingThis ? (
-                    <div style={{ display: 'flex', gap: '0.5rem', height: '60px', alignItems: 'flex-end' }}>
-                        <button onClick={saveField} disabled={saving} className="btn-ghost" style={{ color: 'var(--success)' }}>
-                            <SaveIcon size={18} />
-                        </button>
-                        <button onClick={cancelEdit} disabled={saving} className="btn-ghost" style={{ color: 'var(--danger)' }}>
-                            <X size={18} />
-                        </button>
-                    </div>
-                ) : (
-                    <button onClick={() => startEdit(field, value)} className="btn-ghost" style={{ width: 'auto', fontSize: '0.9rem', color: 'var(--primary)' }}>
-                        Alterar
-                    </button>
-                )
-            )}
-        </div>
-    );
-};
+import FieldEditor from './components/FieldEditor';
+import { useProfileLogic } from './hooks/useProfileLogic';
 
 const Profile = () => {
-    const navigate = useNavigate();
-    const { user, login } = useAuth();
-    const [hidePhone, setHidePhone] = useState(user?.settings?.privacy_phone || false);
+    // Logic extraction
+    const {
+        user, navigate,
+        editing, tempValue, setTempValue, saving,
+        localCountry, setLocalCountry,
+        hidePhone, togglePrivacyPhone,
+        startEdit, cancelEdit, saveField,
+        handleLogout, handleDelete
+    } = useProfileLogic();
 
-    const [editing, setEditing] = useState(null);
-    const [tempValue, setTempValue] = useState('');
-    const [saving, setSaving] = useState(false);
-    // Local state for country to drive UI before saving. Init from user or default 'BR'
-    const [localCountry, setLocalCountry] = useState(user?.country || 'BR');
-
-    const startEdit = (field, currentVal) => {
-        setEditing(field);
-        setTempValue(currentVal || '');
-        if (field === 'phone') {
-            // Ensure localCountry is synced when starting edit
-            setLocalCountry(user?.country || 'BR');
-        }
-    };
-
-    const cancelEdit = () => {
-        setEditing(null);
-        setTempValue('');
-    };
-
-    const saveField = async () => {
-        if (!user?.id) return;
-        setSaving(true);
-        try {
-            let updateData = { [editing]: tempValue };
-
-            // If updating phone, we should also update the country if it changed
-            if (editing === 'phone') {
-                updateData.country = localCountry;
-            }
-
-            const { error } = await supabase
-                .from('users')
-                .update(updateData)
-                .eq('id', user.id);
-
-            if (error) throw error;
-
-            login();
-            window.location.reload();
-
-        } catch (err) {
-            console.error(err);
-            alert('Erro ao atualizar: ' + err.message);
-        } finally {
-            setSaving(false);
-            setEditing(null);
-        }
-    };
-
-    const handleLogout = () => { logout(); navigate('/login'); };
-    const handleDelete = () => { if (confirm("Tem certeza?")) { alert("Conta agendada."); handleLogout(); } };
-
-    // Common props for FieldEditor to reduce clutter
+    // Editor passed props
     const editorProps = {
         editing, startEdit, cancelEdit, saveField, setTempValue, tempValue, saving,
         user, localCountry, setLocalCountry
@@ -239,9 +93,8 @@ const Profile = () => {
                     isPhone={true}
                 />
 
-                {/* Identification Document (Depends on localCountry state while editing, or user.country otherwise) */}
+                {/* Identification Document */}
                 {(() => {
-                    // Use localCountry if we are editing phone (to show dynamic toggle), otherwise user.country
                     const effectiveCountry = editing === 'phone' ? localCountry : (user?.country || 'BR');
 
                     if (effectiveCountry === 'BR') {
@@ -277,7 +130,7 @@ const Profile = () => {
                         <Shield size={20} color="var(--text-secondary)" />
                         <span>Ocultar meu telefone</span>
                     </div>
-                    <div onClick={async () => { const newValue = !hidePhone; setHidePhone(newValue); const newSettings = { ...(user?.settings || {}), privacy_phone: newValue }; await supabase.from('users').update({ settings: newSettings }).eq('id', user.id); window.location.reload(); }} style={{ width: '48px', height: '24px', backgroundColor: hidePhone ? 'var(--primary)' : 'var(--bg-tertiary)', borderRadius: '12px', padding: '2px', cursor: 'pointer', transition: '0.3s' }}>
+                    <div onClick={togglePrivacyPhone} style={{ width: '48px', height: '24px', backgroundColor: hidePhone ? 'var(--primary)' : 'var(--bg-tertiary)', borderRadius: '12px', padding: '2px', cursor: 'pointer', transition: '0.3s' }}>
                         <div style={{ width: '20px', height: '20px', backgroundColor: 'white', borderRadius: '50%', transform: hidePhone ? 'translateX(24px)' : 'translateX(0)', transition: '0.3s' }} />
                     </div>
                 </div>
@@ -287,7 +140,6 @@ const Profile = () => {
             <div className="card" style={{ marginTop: '1rem' }}>
                 <h4 style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Contas Conectadas</h4>
 
-                {/* Mock Data for now - waiting for backend implementation */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                         <div style={{ width: '32px', height: '32px', background: '#DB4437', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>

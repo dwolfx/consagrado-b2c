@@ -91,7 +91,7 @@ const TabDetail = () => {
 
     // --- SPLIT LOGIC HOOK ---
     const {
-        splitItem, selectedUsersToSplit, isEditingSplit,
+        splitItem, selectedUsersToSplit, isEditingSplit, existingParticipants,
         handleItemClick, handleModalConfirm, closeSplitModal
     } = useSplitLogic(visibleOrders);
 
@@ -121,6 +121,7 @@ const TabDetail = () => {
                 setShowAll={setShowAll}
                 resolveName={resolveName}
                 onSplitItem={handleItemClick}
+                onlineUsers={onlineUsers}
             />
 
             {splitItem && (
@@ -129,6 +130,7 @@ const TabDetail = () => {
                     currentUser={user}
                     onlineUsers={onlineUsers}
                     initialSelectedUsers={selectedUsersToSplit}
+                    disabledUsers={existingParticipants}
                     onClose={closeSplitModal}
                     onConfirm={handleModalConfirm}
                     confirmLabel={isEditingSplit ? 'Atualizar Divisão' : 'Confirmar Divisão'}

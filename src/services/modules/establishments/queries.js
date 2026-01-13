@@ -1,6 +1,6 @@
-import { supabase } from '../supabase';
+import { supabase } from '../../supabase';
 
-export const establishmentApi = {
+export const establishmentQueries = {
     getEstablishments: async () => {
         let { data, error } = await supabase
             .from('establishments')
