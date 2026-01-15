@@ -34,6 +34,12 @@ export const statusApi = {
         return !error;
     },
 
+    deleteOrder: async (orderId) => {
+        const { error } = await supabase.from('orders').delete().eq('id', orderId);
+        if (error) console.error("Error deleting order", error);
+        return !error;
+    },
+
     // Status Check for Auto-Logout
     checkUserHasActiveItems: async (userId) => {
         if (!userId) return false;

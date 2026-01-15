@@ -5,7 +5,7 @@ import { api, supabase } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useTablePresence } from '../../hooks/useTablePresence';
 import { useToast } from '../../context/ToastContext';
-import SplitItemModal from '../../components/SplitItemModal';
+import SplitTabItemModal from '../../components/SplitTabItemModal';
 
 // Components
 import TabOrderList from './components/TabOrderList';
@@ -125,7 +125,7 @@ const TabDetail = () => {
             />
 
             {splitItem && (
-                <SplitItemModal
+                <SplitTabItemModal
                     item={splitItem}
                     currentUser={user}
                     onlineUsers={onlineUsers}

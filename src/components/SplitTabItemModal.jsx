@@ -1,0 +1,241 @@
+import React, { useState } from 'react';
+import { X, Check } from 'lucide-react';
+
+const SplitItemModal = ({
+    item,
+    currentUser,
+    onlineUsers,
+    onClose,
+    onConfirm,
+    initialSelectedUsers = [],
+    disabledUsers = [],
+    confirmLabel = 'Confirmar Divisão'
+}) => {
+    // Safeguard hook initialization
+    const safeUser = currentUser || { id: 'guest', name: 'Você' };
+
+    // Initialize with provided selection or default to self
+    const normalize = (id) => String(id).toLowerCase();
+
+    const [selectedUsers, setSelectedUsers] = useState(
+        (initialSelectedUsers && initialSelectedUsers.length > 0)
+            ? initialSelectedUsers.map(normalize)
+            : [normalize(safeUser.id)]
+    );
+
+    // DEBUG FLAG
+    React.useEffect(() => {
+        console.log('🚩 [SplitItemModal] Mounted with item:', item);
+        console.log('🚩 [SplitItemModal] Initial Users:', initialSelectedUsers);
+    }, [item, initialSelectedUsers]);
+
+    if (!item) return null;
+
+    const safeOnlineUsers = Array.isArray(onlineUsers) ? onlineUsers : [safeUser];
+
+    // Logic to show "Whole Pizza" details
+    const cleanName = item.name ? item.name.replace(/^[\d.]+\/[\d.]+\s/, '') : 'Item';
+    const totalDisplayPrice = item.original_price ? Number(item.original_price) : (typeof item.price === 'number' ? item.price : 0);
+
+    const toggleUser = (userId) => {
+        const uid = normalize(userId);
+        setSelectedUsers(prev => {
+            if (prev.includes(uid)) {
+                return prev.filter(id => id !== uid);
+            } else {
+                return [...prev, uid];
+            }
+        });
+    };
+
+    const handleConfirm = () => {
+        if (selectedUsers.length === 0) return;
+
+        // Warning if sending only to others (Transfer)
+        const isSelfSelected = selectedUsers.includes(safeUser.id);
+        if (!isSelfSelected) {
+            const confirmTransfer = window.confirm(
+                "Você não se incluiu na divisão. O valor TOTAL do item será cobrado dos usuários selecionados.\n\nDeseja confirmar essa transferência?"
+            );
+            if (!confirmTransfer) return;
+        }
+
+        onConfirm(item, selectedUsers);
+    };
+
+    const selectAll = () => {
+        const allIds = safeOnlineUsers.map(u => u?.id).filter(Boolean);
+        setSelectedUsers(allIds);
+    };
+
+    return (
+        <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.7)', zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem',
+            animation: 'fadeIn 0.2s'
+        }}>
+            <div className="card" style={{
+                width: '100%', maxWidth: '350px', background: 'var(--bg-secondary)',
+                border: '1px solid var(--bg-tertiary)', padding: '1.5rem',
+                flexDirection: 'column', gap: '1rem',
+                animation: 'scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                margin: 0
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h3 style={{ fontSize: '1.2rem', margin: 0 }}>Dividir Pedido?</h3>
+                    <button onClick={onClose} className="btn-ghost" style={{ padding: '8px' }}>
+                        <X size={20} />
+                    </button>
+                </div>
+
+                <div style={{ padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 'bold' }}>{cleanName}</span>
+                    <span style={{ color: 'var(--primary)' }}>
+                        {totalDisplayPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                </div>
+
+                <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Quem vai pagar?</p>
+                        <button onClick={selectAll} style={{
+                            background: 'none', border: 'none', color: 'var(--primary)',
+                            fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer'
+                        }}>
+                            Todos da mesa
+                        </button>
+                    </div>
+
+                    {/* New Layout: Requester | Others */}
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', minHeight: '80px' }}>
+
+                        {/* LEFT: Requester (Fixed) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', minWidth: '70px' }}>
+                            {(() => {
+                                const requesterId = item.split_requester || item.ordered_by;
+                                const requesterUser = safeOnlineUsers.find(u => u.id === requesterId) || { id: requesterId, name: 'Solicitante' };
+                                const isSelected = selectedUsers.includes(requesterId);
+                                const splitPrice = totalDisplayPrice / (selectedUsers.length || 1);
+                                // Requester is usually the current user if not editing, OR the original owner
+
+                                return (
+                                    <div
+                                        key={requesterId}
+                                        onClick={() => toggleUser(requesterId)}
+                                        style={{
+                                            cursor: 'pointer',
+                                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative'
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: '64px', height: '64px', borderRadius: '50%', overflow: 'hidden',
+                                            border: isSelected ? '3px solid var(--primary)' : '3px solid transparent',
+                                            opacity: isSelected ? 1 : 0.5,
+                                            boxShadow: isSelected ? '0 4px 12px var(--primary-glow)' : 'none',
+                                            transition: 'all 0.2s'
+                                        }}>
+                                            <img src={requesterUser.avatar_url || `https://ui-avatars.com/api/?name=${requesterUser.name}&background=random`} alt={requesterUser.name} style={{ width: '100%', height: '100%' }} />
+                                        </div>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: isSelected ? 'white' : 'var(--text-secondary)' }}>
+                                            {requesterUser.id === safeUser.id ? 'Eu' : (requesterUser.name || 'Solicitante').split(' ')[0]}
+                                        </span>
+                                        {isSelected && (
+                                            <div style={{
+                                                position: 'absolute', top: '-6px', right: '-6px',
+                                                background: '#22c55e', color: 'white',
+                                                fontSize: '0.65rem', fontWeight: 'bold',
+                                                padding: '2px 6px', borderRadius: '10px',
+                                                boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                            }}>
+                                                {splitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                        </div>
+
+                        {/* DIVIDER */}
+                        <div style={{ width: '1px', background: 'var(--bg-tertiary)', alignSelf: 'stretch', margin: '0 4px' }}></div>
+
+                        {/* RIGHT: Others Grid */}
+                        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(56px, 1fr))', gap: '0.75rem' }}>
+                            {safeOnlineUsers.map(u => {
+                                if (!u) return null;
+                                const requesterId = item.split_requester || item.ordered_by;
+                                if (u.id === requesterId) return null; // Skip requester (already shown on left)
+
+                                const isSelected = selectedUsers.includes(u.id);
+                                const isSelf = u.id === safeUser.id;
+                                const isDisabled = disabledUsers.includes(u.id) && !isSelf;
+                                const splitPrice = totalDisplayPrice / (selectedUsers.length || 1);
+
+                                return (
+                                    <div
+                                        key={u.id || Math.random()}
+                                        onClick={() => !isDisabled && u.id && toggleUser(u.id)}
+                                        style={{
+                                            cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative',
+                                            opacity: isDisabled ? 0.4 : 1,
+                                            pointerEvents: isDisabled ? 'none' : 'auto'
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: '48px', height: '48px', borderRadius: '50%', overflow: 'hidden',
+                                            border: isSelected ? '2px solid var(--primary)' : '2px solid transparent',
+                                            opacity: isSelected ? 1 : (isDisabled ? 1 : 0.5),
+                                            transition: 'all 0.2s',
+                                            filter: isDisabled ? 'grayscale(100%)' : 'none'
+                                        }}>
+                                            <img src={u.avatar_url || `https://ui-avatars.com/api/?name=${u.name || 'User'}&background=random`} alt={u.name} style={{ width: '100%', height: '100%' }} />
+                                        </div>
+                                        <span style={{ fontSize: '0.7rem', textAlign: 'center', color: isSelected ? 'white' : 'var(--text-secondary)' }}>
+                                            {isSelf ? 'Eu' : (u.name || 'User').split(' ')[0]}
+                                        </span>
+                                        {isSelected && !isDisabled && (
+                                            <div style={{
+                                                position: 'absolute', top: '-4px', right: '-4px',
+                                                background: '#22c55e', color: 'white',
+                                                fontSize: '0.6rem', fontWeight: 'bold',
+                                                padding: '1px 5px', borderRadius: '10px'
+                                            }}>
+                                                {splitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                <div style={{ padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: '16px', marginBottom: '1rem', textAlign: 'center', border: '1px solid var(--border-color)' }}>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Total por pessoa</p>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>
+                        {(totalDisplayPrice / (selectedUsers.length || 1)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </p>
+                </div>
+
+
+                <button
+                    onClick={handleConfirm}
+                    disabled={selectedUsers.length === 0}
+                    className="btn btn-primary"
+                    style={{ width: '100%', justifyContent: 'center', padding: '1rem', fontSize: '1.1rem' }}
+                >
+                    {confirmLabel} <Check size={20} style={{ marginLeft: '8px' }} />
+                </button>
+
+            </div>
+            <style>{`
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes scaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+            `}</style>
+        </div>
+    );
+};
+
+export default SplitItemModal;
