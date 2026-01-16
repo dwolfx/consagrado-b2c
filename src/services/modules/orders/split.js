@@ -131,85 +131,91 @@ export const splitApi = {
     },
 
     redistributeOrder: async (relatedOrders, targetUserIds) => {
-        console.log("🔥 redistributeOrder called with:", { relatedOrdersCount: relatedOrders?.length, targetIds: targetUserIds });
+        console.log("🔥 redistributeOrder (Diff Approach) called with:", { relatedOrdersCount: relatedOrders?.length, targetIds: targetUserIds });
 
         if (!relatedOrders || relatedOrders.length === 0) return false;
 
-        // 1. Identify the "Master" Order to preserve (try to find one that matches a target user, or just the first/oldest)
-        const sortedOrders = [...relatedOrders].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-        const masterOrder = sortedOrders[0];
-
-        // 2. Determine the "Survivor" who inherits the Master ID
-        const originalOwnerId = masterOrder.ordered_by;
-        // Prioritize original owner if they are still in the group, otherwise the first target user
-        const survivorId = targetUserIds.includes(originalOwnerId) ? originalOwnerId : targetUserIds[0];
-
-        // 3. Calculation
-        const totalAmount = relatedOrders.reduce((acc, o) => acc + o.price, 0);
+        // Common Data Calculation
+        const masterOrder = relatedOrders[0]; // Any order serves as template for product/table info
         const totalParts = targetUserIds.length;
-        const basePrice = masterOrder.original_price ? Number(masterOrder.original_price) : totalAmount;
         const cleanName = masterOrder.name.replace(/^\d+\/\d+\s/, '').replace(/\s\[R\$.*\]/, '');
+
+        // Price Calculation based on ORIGINAL price to avoid rounding drift
+        const basePrice = masterOrder.original_price ? Number(masterOrder.original_price) : Number(masterOrder.price);
 
         const isStillSplit = totalParts > 1;
         const newPrice = isStillSplit ? (basePrice / totalParts) : basePrice;
         const newName = isStillSplit ? `1/${totalParts} ${cleanName}` : cleanName;
-        // If unsplit, split_requester becomes null. 
-        const newRequester = isStillSplit ? (masterOrder.split_requester || masterOrder.ordered_by) : null;
+
+        // Requester Logic: Keep existing requester if possible
+        const currentRequester = masterOrder.split_requester || masterOrder.ordered_by;
+        const newRequester = isStillSplit ? currentRequester : null;
         const newParticipants = isStillSplit ? targetUserIds : null;
 
-        console.log(`⚖️ Redistributing via Smart Update. Survivor: ${survivorId} (inherits ID ${masterOrder.id}). Unsplit? ${!isStillSplit}`);
+        // 1. Map existing orders by User ID for quick lookup
+        const existingOrdersMap = new Map();
+        relatedOrders.forEach(o => existingOrdersMap.set(o.ordered_by, o));
 
-        // 4. UPDATE the Master Order
-        const { error: updateError } = await supabase
-            .from('orders')
-            .update({
-                name: newName,
-                price: newPrice,
-                ordered_by: survivorId, // Transfer ownership if needed
-                is_split: isStillSplit,
-                split_parts: isStillSplit ? totalParts : 1,
-                original_price: basePrice,
-                split_requester: newRequester,
-                split_participants: newParticipants
-            })
-            .eq('id', masterOrder.id);
+        // 2. Process Target Users (Update or Insert)
+        const promises = [];
 
-        if (updateError) {
-            console.error("❌ Error updating master order:", updateError);
+        for (const userId of targetUserIds) {
+            const existingOrder = existingOrdersMap.get(userId);
+
+            if (existingOrder) {
+                // UPDATE Existing
+                console.log(`🔄 Updating existing order for user ${userId} (ID: ${existingOrder.id})`);
+                promises.push(
+                    supabase.from('orders').update({
+                        name: newName,
+                        price: newPrice,
+                        is_split: isStillSplit,
+                        split_parts: isStillSplit ? totalParts : 1,
+                        original_price: basePrice,
+                        split_requester: newRequester,
+                        split_participants: newParticipants
+                    }).eq('id', existingOrder.id)
+                );
+                // Remove from map so we know what's left to delete
+                existingOrdersMap.delete(userId);
+            } else {
+                // INSERT New
+                console.log(`➕ Inserting new order for user ${userId}`);
+                promises.push(
+                    supabase.from('orders').insert({
+                        table_id: masterOrder.table_id,
+                        establishment_id: masterOrder.establishment_id,
+                        product_id: masterOrder.product_id,
+                        name: newName,
+                        price: newPrice,
+                        quantity: masterOrder.quantity,
+                        status: masterOrder.status,
+                        ordered_by: userId,
+                        is_split: isStillSplit,
+                        split_parts: isStillSplit ? totalParts : 1,
+                        original_price: basePrice,
+                        split_requester: newRequester,
+                        split_participants: newParticipants
+                    })
+                );
+            }
+        }
+
+        // 3. Delete Removed Users (Leftovers in map)
+        for (const [userId, orderToDelete] of existingOrdersMap) {
+            console.log(`🗑️ Deleting removed user ${userId} (ID: ${orderToDelete.id})`);
+            promises.push(
+                supabase.from('orders').delete().eq('id', orderToDelete.id)
+            );
+        }
+
+        // Execute all
+        const results = await Promise.all(promises);
+        const hasErrors = results.some(r => r.error);
+
+        if (hasErrors) {
+            console.error("❌ Errors occurred during redistributeOrder:", results.filter(r => r.error));
             return false;
-        }
-
-        // 5. DELETE the other existing related orders (orphans)
-        // Ensure we don't delete the masterOrder we just updated
-        const idsToDelete = relatedOrders.filter(o => o.id !== masterOrder.id).map(o => o.id);
-        if (idsToDelete.length > 0) {
-            const { error: delError } = await supabase.from('orders').delete().in('id', idsToDelete);
-            if (delError) console.error("❌ Error deleting orphans:", delError);
-        }
-
-        // 6. INSERT new orders for the *rest* of the participants
-        // Filter out the survivor since they already hold the Master Order
-        const otherParticipants = targetUserIds.filter(uid => uid !== survivorId);
-
-        if (otherParticipants.length > 0) {
-            const newOrders = otherParticipants.map(userId => ({
-                table_id: masterOrder.table_id,
-                establishment_id: masterOrder.establishment_id,
-                product_id: masterOrder.product_id,
-                name: newName,
-                price: newPrice,
-                quantity: masterOrder.quantity,
-                status: masterOrder.status,
-                ordered_by: userId,
-                is_split: isStillSplit,
-                split_parts: isStillSplit ? totalParts : 1,
-                original_price: basePrice,
-                split_requester: newRequester,
-                split_participants: newParticipants
-            }));
-
-            const { error: insError } = await supabase.from('orders').insert(newOrders);
-            if (insError) console.error("❌ Error inserting new parts:", insError);
         }
 
         return true;

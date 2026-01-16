@@ -14,6 +14,7 @@ import ProductGrid from './components/ProductGrid';
 import PizzaBuilderModal from './components/PizzaBuilderModal';
 import SplitStatusModal from './components/SplitStatusModal';
 import CartFooter from './components/CartFooter';
+import TableUsersModal from '../../components/TableUsersModal';
 
 // Hook
 import { useMenuLogic } from './hooks/useMenuLogic';
@@ -30,6 +31,7 @@ const Menu = () => {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [showPizzaBuilder, setShowPizzaBuilder] = useState(false);
+    const [showUsersModal, setShowUsersModal] = useState(false);
 
     // Filter Logic (UI concern)
     const filteredItems = products.list.filter(item => {
@@ -73,11 +75,14 @@ const Menu = () => {
                     <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                 </div>
 
-                <div style={{
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                    background: 'var(--bg-tertiary)', padding: '0.6rem', borderRadius: '12px',
-                    border: onlineUsers.length > 1 ? '1px solid var(--primary)' : '1px solid transparent'
-                }}>
+                <div
+                    onClick={() => setShowUsersModal(true)}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        background: 'var(--bg-tertiary)', padding: '0.6rem', borderRadius: '12px',
+                        border: onlineUsers.length > 1 ? '1px solid var(--primary)' : '1px solid transparent',
+                        cursor: 'pointer'
+                    }}>
                     <Users size={20} color={onlineUsers.length > 1 ? 'var(--primary)' : 'var(--text-secondary)'} />
                     <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: onlineUsers.length > 1 ? 'var(--primary)' : 'var(--text-secondary)' }}>
                         {onlineUsers.length}
@@ -145,6 +150,13 @@ const Menu = () => {
                 onCancel={split.reset}
                 onContinueAlone={split.continueAlone}
             />
+
+            {showUsersModal && (
+                <TableUsersModal
+                    users={onlineUsersSafe}
+                    onClose={() => setShowUsersModal(false)}
+                />
+            )}
         </div>
     );
 };

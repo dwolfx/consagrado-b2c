@@ -150,11 +150,15 @@ export const TableProvider = ({ children }) => {
             }
 
             // B. Create Stub Objects for Guest Names
-            names.forEach(n => foundUsers.push({
-                id: n,
-                name: n,
-                avatar_url: `https://ui-avatars.com/api/?name=${n}&background=random`
-            }));
+            // B. Create Stub Objects for Guest Names
+            names.forEach(n => {
+                const isMe = n === user?.id; // Check if this guest ID matches current user
+                foundUsers.push({
+                    id: n,
+                    name: n,
+                    avatar_url: (isMe && user?.avatar) ? user.avatar : `https://ui-avatars.com/api/?name=${n}&background=random`
+                });
+            });
 
             setDbUsers(foundUsers);
         };

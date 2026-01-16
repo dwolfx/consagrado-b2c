@@ -171,7 +171,7 @@ const Payment = () => {
                 </div>
             </div>
 
-            <h3 style={{ marginBottom: '1rem' }}>Forma de Pagamento</h3>
+            <h3 style={{ marginBottom: '1rem', marginTop: '2rem' }}>Forma de Pagamento</h3>
 
             <div style={{ display: 'grid', gap: '1rem', paddingBottom: '2rem' }}>
                 <button className="btn btn-secondary" onClick={handlePayment}>PIX</button>

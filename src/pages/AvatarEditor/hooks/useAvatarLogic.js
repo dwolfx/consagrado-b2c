@@ -111,10 +111,14 @@ export const useAvatarLogic = () => {
         return `${baseUrl}?${params.toString()}`;
     };
 
+    // Need to trigger a table presence update if possible.
+    // Ideally, we just rely on Realtime, but for persistence we want the DB to reflect it for the next reload.
     const handleSave = async () => {
         setLoading(true);
         const newAvatar = getAvatarUrl();
         await updateUser({ avatar: newAvatar });
+        // After updating user, if we are in a table, we should ideally poke the table context 
+        // but AuthContext update triggers TableContext realtime update automatically.
         navigate(-1);
         setLoading(false);
     };

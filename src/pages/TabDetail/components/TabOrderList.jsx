@@ -112,7 +112,7 @@ const TabOrderList = ({ myOrders, othersOrders, showAll, setShowAll, resolveName
                             }}
                         >
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                                <span style={{ fontWeight: '600', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontWeight: '600', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: isSplit ? '6px' : '12px' }}>
                                     {item.quantity}x
                                     {isSplit && (
                                         <span style={{
