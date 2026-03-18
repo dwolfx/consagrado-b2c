@@ -25,29 +25,33 @@ export const useAvatarLogic = () => {
     const [loading, setLoading] = useState(false);
     const [svgContent, setSvgContent] = useState(null);
 
+    const [initialized, setInitialized] = useState(false);
+
     // Initialize from User Avatar URL
     useEffect(() => {
-        if (user?.avatar) {
+        if (user?.avatar && !initialized) {
             try {
                 const url = new URL(user.avatar);
                 const params = new URLSearchParams(url.search);
-                const newConfig = { ...config };
+                
+                setConfig(prevConfig => {
+                    const newConfig = { ...prevConfig };
+                    ['top', 'accessories', 'hairColor', 'facialHair', 'clothing', 'clothesColor', 'skinColor', 'backgroundColor'].forEach(key => {
+                        const val = params.get(key);
+                        if (val) newConfig[key] = val;
+                    });
 
-                ['top', 'accessories', 'hairColor', 'facialHair', 'clothing', 'clothesColor', 'skinColor', 'backgroundColor'].forEach(key => {
-                    const val = params.get(key);
-                    if (val) newConfig[key] = val;
+                    if (params.get('topProbability') === '0') {
+                        newConfig.top = 'noHair';
+                    }
+                    return newConfig;
                 });
-
-                if (params.get('topProbability') === '0') {
-                    newConfig.top = 'noHair';
-                }
-
-                setConfig(newConfig);
+                setInitialized(true);
             } catch (e) {
                 console.error("Error parsing avatar URL", e);
             }
         }
-    }, [user, config]);
+    }, [user, initialized]);
 
     const getAvatarUrl = useCallback(() => {
         const baseUrl = 'https://api.dicebear.com/9.x/avataaars/svg';
