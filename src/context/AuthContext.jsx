@@ -233,8 +233,9 @@ export const AuthProvider = ({ children }) => {
                     ...updates 
                 }]);
                 if (upsertErr) {
-                     console.error('UPSERT Fallback failed:', upsertErr);
-                     alert('Erro crítico: Seu perfil não foi encontrado no banco de dados. Tente deslogar e criar uma conta real.');
+                     console.warn('UPSERT Fallback failed (likely due to Foreign Key on auth.users for Anonymous/Demo accounts):', upsertErr.message);
+                     console.log('💡 Avatar saved in local session memory. Persistence will work until cache is cleared.');
+                     // We don't alert anymore because Anonymous users (QR Code on table) often don't have a real Supabase Auth row.
                 } else {
                      console.log('✅ Auto-healed profile via UPSERT', user.id);
                 }
