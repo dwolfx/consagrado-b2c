@@ -33,6 +33,8 @@ export const useMenuLogic = (user, addToast, navigate) => {
     useEffect(() => {
         const load = async () => {
             let currentEstabId = 1;
+            let settings = {};
+
             if (!tableId) {
                 try {
                     const estab = await api.getEstablishment(1);
