@@ -49,26 +49,6 @@ export const useAvatarLogic = () => {
         }
     }, [user, config]);
 
-    // Fetch SVG
-    useEffect(() => {
-        const fetchAvatar = async () => {
-            const url = getAvatarUrl();
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`DiceBear API Error: ${response.status}`);
-                const text = await response.text();
-                setSvgContent(text);
-            } catch (err) {
-                console.error("Failed to load avatar:", err);
-                setSvgContent(null);
-            }
-        };
-
-        const timeoutId = setTimeout(fetchAvatar, 300);
-        return () => clearTimeout(timeoutId);
-    }, [config, user, getAvatarUrl]);
-
-
     const getAvatarUrl = useCallback(() => {
         const baseUrl = 'https://api.dicebear.com/9.x/avataaars/svg';
         const params = new URLSearchParams();
@@ -110,6 +90,28 @@ export const useAvatarLogic = () => {
 
         return `${baseUrl}?${params.toString()}`;
     }, [config, user]);
+
+    // Fetch SVG
+    useEffect(() => {
+        const fetchAvatar = async () => {
+            const url = getAvatarUrl();
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`DiceBear API Error: ${response.status}`);
+                const text = await response.text();
+                setSvgContent(text);
+            } catch (err) {
+                console.error("Failed to load avatar:", err);
+                setSvgContent(null);
+            }
+        };
+
+        const timeoutId = setTimeout(fetchAvatar, 300);
+        return () => clearTimeout(timeoutId);
+    }, [config, user, getAvatarUrl]);
+
+
+    // Removed from here
 
     // Need to trigger a table presence update if possible.
     // Ideally, we just rely on Realtime, but for persistence we want the DB to reflect it for the next reload.
