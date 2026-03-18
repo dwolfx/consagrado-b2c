@@ -14,7 +14,7 @@ const FavoritesSection = ({ userId, onItemClick }) => {
                 .select('*, product:products(*)') // Join products to get image/details
                 .eq('ordered_by', userId)
                 .neq('status', 'service_call') // Ignore waiter calls
-                .neq('product_id', null)
+                .not('product_id', 'is', null)
                 .order('created_at', { ascending: false })
                 .limit(40);
 
