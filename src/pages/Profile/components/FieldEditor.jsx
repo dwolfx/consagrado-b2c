@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { Save as SaveIcon, X } from 'lucide-react';
 import PhoneInput, { formatPhoneNumber } from 'react-phone-number-input';
 import { maskCPF } from '../../../utils/masks'; // Ensure this path is correct relative to this file: pages/Profile/components/FieldEditor
@@ -7,7 +8,7 @@ import { maskCPF } from '../../../utils/masks'; // Ensure this path is correct r
 const FieldEditor = ({
     label, field, icon: Icon, value, isSelect, options, isPhone,
     editing, startEdit, cancelEdit, saveField, setTempValue, tempValue, saving,
-    user, localCountry, setLocalCountry
+    localCountry, setLocalCountry
 }) => {
     const isEditingThis = editing === field;
 

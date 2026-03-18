@@ -11,7 +11,7 @@ const Scanner = () => {
     const [manualCode, setManualCode] = useState('');
     const [error, setError] = useState('');
     const [showInput, setShowInput] = useState(false);
-
+    const { addToast } = useToast();
 
 
     const handleSimulation = async () => {

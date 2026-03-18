@@ -134,7 +134,7 @@ const ControlSection = ({ label, value, displayValue, onPrev, onNext, options })
     </div>
 );
 
-const ColorSection = ({ label, colors, selected, onSelect, size = 32, isBackground = false }) => (
+const ColorSection = ({ label, colors, selected, onSelect, size = 32 }) => (
     <div>
         <label style={{ display: 'block', textAlign: 'center', marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
             {label}

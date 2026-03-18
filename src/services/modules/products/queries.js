@@ -1,10 +1,11 @@
 import { supabase } from '../../supabase';
 
 export const productQueries = {
-    getProducts: async () => {
-        let { data, error } = await supabase
-            .from('products')
-            .select('*');
+    getProducts: async (estabId = null) => {
+        let query = supabase.from('products').select('*');
+        if (estabId) query = query.eq('establishment_id', estabId);
+        
+        const { data, error } = await query;
         if (error) console.error('Error fetching products', error);
         return data || [];
     },

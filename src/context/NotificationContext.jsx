@@ -90,7 +90,7 @@ export const NotificationProvider = ({ children }) => {
             supabase.removeChannel(userChannel);
             supabase.removeChannel(orderChannel);
         };
-    }, [user]);
+    }, [user, addToast]);
 
     // 2. Table Channel (Requires Table ID)
     useEffect(() => {
@@ -165,18 +165,37 @@ export const NotificationProvider = ({ children }) => {
                     let dbProduct = null;
 
                     if (isVirtualItem) {
-                        console.log(`ℹ️ Virtual Item detected (${pid}). Skipping DB Price Check.`);
-                        // Try to get price from the item payload itself
-                        // We search for the specific item in the list or use the top-level
+                        console.log(`ℹ️ Virtual Item detected (${pid}). Validating parts in DB...`);
                         const payloadItem = (req.itemDetails.items || []).find(i => i.productId === pid) || req.itemDetails;
-                        realPrice = Number(payloadItem.price || payloadItem.originalPrice || 0);
+                        const metadata = payloadItem.metadata || {};
 
-                        // Create a mock dbProduct to satisfy downstream logic
-                        dbProduct = {
-                            id: pid,
-                            name: payloadItem.name || 'Item Dividido',
-                            price: realPrice
-                        };
+                        if (metadata.type === 'half_half' && metadata.parts && metadata.parts.length === 2) {
+                            const [part1Id, part2Id] = metadata.parts;
+                            const dbPart1 = await api.getProduct(part1Id);
+                            const dbPart2 = await api.getProduct(part2Id);
+
+                            if (!dbPart1 || !dbPart2) {
+                                console.error(`❌ Pizza parts not found in DB`);
+                                addToast(`Erro: Sabores da pizza original não encontrados no sistema.`, "error");
+                                return false;
+                            }
+                            
+                            const price1 = Number(dbPart1.price);
+                            const price2 = Number(dbPart2.price);
+                            realPrice = Math.max(price1, price2);
+
+                            dbProduct = {
+                                id: pid,
+                                name: `½ ${dbPart1.name} + ½ ${dbPart2.name}`,
+                                price: realPrice,
+                                metadata: metadata
+                            };
+                            console.log(`✅ Secure Virtual Item Validation. Calculated Max Price: ${realPrice}`);
+                        } else {
+                            console.error(`❌ Unrecognized or insecure virtual item format`, metadata);
+                            addToast(`Erro: Item customizado inválido ou adulterado.`, "error");
+                            return false;
+                        }
                     } else {
                         // Standard Security Check for Real Products
                         dbProduct = await api.getProduct(pid);
@@ -198,7 +217,6 @@ export const NotificationProvider = ({ children }) => {
                     const totalParts = req.itemDetails.totalParts || 2; // Default to 2 if not sent
                     const splitPrice = realPrice / totalParts;
                     const splitName = totalParts > 1 ? `1/${totalParts} ${dbProduct.name}` : dbProduct.name;
-                    const debugName = `${splitName} [R$${splitPrice.toFixed(2)}]`; // DEBUG
 
                     console.log(`🧮 Math: ${realPrice} / ${totalParts} = ${splitPrice}`);
 
@@ -215,7 +233,8 @@ export const NotificationProvider = ({ children }) => {
                         splitParts: totalParts,
                         originalPrice: realPrice,
                         splitRequester: req.requesterId,
-                        splitParticipants: [req.requesterId, req.targetUserId] // Basic 2-way split context
+                        splitParticipants: [req.requesterId, req.targetUserId], // Basic 2-way split context
+                        metadata: dbProduct.metadata || {}
                     });
 
                     return !!newOrder;

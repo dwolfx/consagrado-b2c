@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { api, supabase } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useTablePresence } from '../../hooks/useTablePresence';
@@ -26,7 +26,7 @@ const TabDetail = () => {
     const [showAll, setShowAll] = useState(false);
 
     // --- DATA LOADING ---
-    const loadTab = async () => {
+    const loadTab = useCallback(async () => {
         const tableId = localStorage.getItem('my_table_id');
         if (!tableId) {
             navigate('/scanner');
@@ -46,7 +46,7 @@ const TabDetail = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [navigate]);
 
     useEffect(() => {
         loadTab();
@@ -59,7 +59,7 @@ const TabDetail = () => {
                 .subscribe();
             return () => { supabase.removeChannel(channel); };
         }
-    }, [navigate]);
+    }, [navigate, loadTab]);
 
     // --- LOGIC HELPERS ---
     const resolveName = (id) => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -47,7 +47,7 @@ export const useAvatarLogic = () => {
                 console.error("Error parsing avatar URL", e);
             }
         }
-    }, [user]);
+    }, [user, config]);
 
     // Fetch SVG
     useEffect(() => {
@@ -66,10 +66,10 @@ export const useAvatarLogic = () => {
 
         const timeoutId = setTimeout(fetchAvatar, 300);
         return () => clearTimeout(timeoutId);
-    }, [config, user]);
+    }, [config, user, getAvatarUrl]);
 
 
-    const getAvatarUrl = () => {
+    const getAvatarUrl = useCallback(() => {
         const baseUrl = 'https://api.dicebear.com/9.x/avataaars/svg';
         const params = new URLSearchParams();
 
@@ -109,7 +109,7 @@ export const useAvatarLogic = () => {
         params.append('eyebrows', 'default');
 
         return `${baseUrl}?${params.toString()}`;
-    };
+    }, [config, user]);
 
     // Need to trigger a table presence update if possible.
     // Ideally, we just rely on Realtime, but for persistence we want the DB to reflect it for the next reload.

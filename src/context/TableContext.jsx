@@ -63,7 +63,6 @@ export const TableProvider = ({ children }) => {
 
         // APPLY THEME
         const brandColor = establishment.theme_color || '#dedede';
-        const secondaryColor = establishment.theme_secondary_color || '#888888';
 
         document.documentElement.style.setProperty('--brand-color', brandColor);
 
@@ -103,7 +102,7 @@ export const TableProvider = ({ children }) => {
         var b = parseInt(hexcolor.substr(4, 2), 16);
         var yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
         return (yiq >= 128) ? '#000000' : '#ffffff';
-    };
+    }
 
 
     // --- 1. DB Presence (Users with Active Orders) ---
@@ -173,7 +172,7 @@ export const TableProvider = ({ children }) => {
         return () => {
             supabase.removeChannel(orderChannel);
         };
-    }, [tableId]);
+    }, [tableId, user?.id, user?.avatar]);
 
     // --- 2. Realtime Presence (Live Cursors) ---
     useEffect(() => {

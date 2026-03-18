@@ -17,7 +17,6 @@ export const useMenuLogic = (user, addToast, navigate) => {
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [loading, setLoading] = useState(true);
     const [establishmentName, setEstablishmentName] = useState('');
-    const [sortOrder, setSortOrder] = useState(DEFAULT_CATEGORY_ORDER);
 
     // Cart State
     const [cart, setCart] = useState({});
@@ -33,7 +32,7 @@ export const useMenuLogic = (user, addToast, navigate) => {
     // --- INITIAL DATA LOAD ---
     useEffect(() => {
         const load = async () => {
-            let settings = {};
+            let currentEstabId = 1;
             if (!tableId) {
                 try {
                     const estab = await api.getEstablishment(1);
@@ -46,19 +45,18 @@ export const useMenuLogic = (user, addToast, navigate) => {
                 try {
                     const tableData = await api.getTable(tableId);
                     if (tableData && tableData.establishment) {
+                        currentEstabId = tableData.establishment.id;
                         setEstablishmentName(tableData.establishment.name);
                         settings = tableData.establishment.settings || {};
                     }
-                } catch (e) { }
+                } catch (e) { /* empty */ }
             }
 
             const currentSortOrder = settings.category_order || DEFAULT_CATEGORY_ORDER;
             const hiddenCategories = settings.hidden_categories || [];
 
-            setSortOrder(currentSortOrder);
-
             try {
-                const data = await api.getProducts();
+                const data = await api.getProducts(currentEstabId);
                 setProducts(data);
 
                 const uniqueCats = [...new Set(data.map(p => p.category))].filter(Boolean);
@@ -196,7 +194,17 @@ export const useMenuLogic = (user, addToast, navigate) => {
         }, 0);
 
         if (onlineUsers.length > 1) {
-            const cartItems = Object.entries(cartToProcess).map(([pid, qty]) => ({ productId: pid, quantity: qty }));
+            const cartItems = Object.entries(cartToProcess).map(([pid, qty]) => {
+                let product = products.find(p => String(p.id) === String(pid));
+                if (!product && itemsSource[pid]) product = itemsSource[pid];
+                return {
+                    productId: pid,
+                    quantity: qty,
+                    name: product?.name || 'Item Desconhecido',
+                    price: product?.price || 0,
+                    metadata: product?.metadata || {}
+                };
+            });
             const virtualItem = {
                 name: 'Total do Pedido',
                 price: currentTotal,

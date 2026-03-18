@@ -1,7 +1,7 @@
 import React from 'react';
 import { Users } from 'lucide-react';
 
-const TabOrderList = ({ myOrders, othersOrders, showAll, setShowAll, resolveName, onSplitItem, onlineUsers = [] }) => {
+const TabOrderList = ({ myOrders, othersOrders, showAll, setShowAll, onSplitItem, onlineUsers = [] }) => {
 
     const formatPrice = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -79,7 +79,6 @@ const TabOrderList = ({ myOrders, othersOrders, showAll, setShowAll, resolveName
     };
 
     // Calculate Others Total
-    const othersSubtotal = othersOrders.reduce((acc, item) => acc + (getDisplayPrice(item) * item.quantity), 0);
 
     return (
         <div style={{ display: 'grid', gap: '1rem', marginBottom: '6rem' }}>

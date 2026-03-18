@@ -8,16 +8,41 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Init session from local storage or Supabase session
         const initSession = async () => {
-            const storedUser = localStorage.getItem('garcom_user');
-            if (storedUser) {
-                setUser(JSON.parse(storedUser));
+            const { data: { session } } = await supabase.auth.getSession();
+            const storedUser = localStorage.getItem('b2c_user');
+            
+            if (session) {
+                if (storedUser) {
+                    setUser(JSON.parse(storedUser));
+                } else {
+                    const { data: profile } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single();
+                    if (profile) {
+                         setUser(profile);
+                         localStorage.setItem('b2c_user', JSON.stringify(profile));
+                    }
+                }
+            } else {
+                setUser(null);
+                localStorage.removeItem('b2c_user');
             }
             setLoading(false);
             localStorage.setItem('lastActivity', Date.now()); // Reset on load
         };
         initSession();
+        
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+             if (!session) {
+                 setUser(null);
+                 localStorage.removeItem('b2c_user');
+             }
+        });
+        
+        return () => subscription.unsubscribe();
     }, []);
 
     // AUTO-LOGOUT LOGIC
@@ -126,7 +151,7 @@ export const AuthProvider = ({ children }) => {
                 };
 
                 setUser(userObj);
-                localStorage.setItem('garcom_user', JSON.stringify(userObj));
+                localStorage.setItem('b2c_user', JSON.stringify(userObj));
                 return true;
             }
             return false;
@@ -177,7 +202,7 @@ export const AuthProvider = ({ children }) => {
     const logout = async () => {
         await supabase.auth.signOut();
         setUser(null);
-        localStorage.removeItem('garcom_user');
+        localStorage.removeItem('b2c_user');
     };
 
     const updateUser = async (updates) => {
@@ -185,7 +210,7 @@ export const AuthProvider = ({ children }) => {
 
         const updatedUser = { ...user, ...updates };
         setUser(updatedUser);
-        localStorage.setItem('garcom_user', JSON.stringify(updatedUser));
+        localStorage.setItem('b2c_user', JSON.stringify(updatedUser));
 
         try {
             const { error } = await supabase

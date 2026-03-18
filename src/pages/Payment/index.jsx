@@ -14,7 +14,7 @@ const Payment = () => {
         showFeeInfo, setShowFeeInfo,
         showItemsInfo, setShowItemsInfo,
         showRemoveModal, setShowRemoveModal,
-        tipValue, displayedTip, machineFeeValue, operationalFeeValue, applicableAppFee,
+        tipValue, machineFeeValue, operationalFeeValue, applicableAppFee,
         handleRemoveFee, handlePayment, setTableId
     } = usePaymentLogic();
 
