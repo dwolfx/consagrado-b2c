@@ -23,6 +23,8 @@ const SplitItemModal = ({
             : [normalize(safeUser.id)]
     );
 
+    const [showTransferWarn, setShowTransferWarn] = useState(false);
+
     // DEBUG FLAG
     React.useEffect(() => {
         console.log('🚩 [SplitItemModal] Mounted with item:', item);
@@ -53,11 +55,9 @@ const SplitItemModal = ({
 
         // Warning if sending only to others (Transfer)
         const isSelfSelected = selectedUsers.includes(safeUser.id);
-        if (!isSelfSelected) {
-            const confirmTransfer = window.confirm(
-                "Você não se incluiu na divisão. O valor TOTAL do item será cobrado dos usuários selecionados.\n\nDeseja confirmar essa transferência?"
-            );
-            if (!confirmTransfer) return;
+        if (!isSelfSelected && !showTransferWarn) {
+            setShowTransferWarn(true);
+            return;
         }
 
         onConfirm(item, selectedUsers);
@@ -220,14 +220,47 @@ const SplitItemModal = ({
                 </div>
 
 
-                <button
-                    onClick={handleConfirm}
-                    disabled={selectedUsers.length === 0}
-                    className="btn btn-primary"
-                    style={{ width: '100%', justifyContent: 'center', padding: '1rem', fontSize: '1.1rem' }}
-                >
-                    {confirmLabel} <Check size={20} style={{ marginLeft: '8px' }} />
-                </button>
+                {showTransferWarn && (
+                    <div style={{
+                        padding: '1rem', background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid var(--danger)', borderRadius: '12px',
+                        marginBottom: '1rem', textAlign: 'center'
+                    }}>
+                        <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--danger)', fontWeight: 'bold' }}>Atenção: Transferência Integral</p>
+                        <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            Você não se incluiu na divisão. O valor <b>total</b> será cobrado dos usuários selecionados.
+                        </p>
+                    </div>
+                )}
+
+                {!showTransferWarn ? (
+                    <button
+                        onClick={handleConfirm}
+                        disabled={selectedUsers.length === 0}
+                        className="btn btn-primary"
+                        style={{ width: '100%', justifyContent: 'center', padding: '1rem', fontSize: '1.1rem' }}
+                    >
+                        {confirmLabel} <Check size={20} style={{ marginLeft: '8px' }} />
+                    </button>
+                ) : (
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                            onClick={() => setShowTransferWarn(false)}
+                            className="btn btn-secondary"
+                            style={{ flex: 1, justifyContent: 'center', padding: '1rem' }}
+                        >
+                            Voltar
+                        </button>
+                        <button
+                            onClick={handleConfirm}
+                            disabled={selectedUsers.length === 0}
+                            className="btn btn-primary"
+                            style={{ flex: 1, justifyContent: 'center', padding: '1rem', background: 'var(--danger)' }}
+                        >
+                            Confirmar <Check size={20} style={{ marginLeft: '4px' }} />
+                        </button>
+                    </div>
+                )}
 
             </div>
             <style>{`
