@@ -213,14 +213,31 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('b2c_user', JSON.stringify(updatedUser));
 
         try {
-            const { error } = await supabase
+            const { error, data } = await supabase
                 .from('users')
                 .update(updates)
-                .eq('id', user.id);
+                .eq('id', user.id)
+                .select();
 
             if (error) {
                 console.error('CRITICAL: Supabase update failed:', error.message, error.details, error.hint);
                 alert(`Erro ao salvar no banco: ${error.message}`); // Temporary alert to notify user immediately
+            } else if (!data || data.length === 0) {
+                console.error('CRITICAL: 0 rows updated! Profile does not exist or RLS blocked UPDATE.', user.id);
+                // Auto-healing fallback: force upsert if missing!
+                const { error: upsertErr } = await supabase.from('users').upsert([{ 
+                    id: user.id, 
+                    email: user.email, 
+                    name: user.name, 
+                    role: user.role, 
+                    ...updates 
+                }]);
+                if (upsertErr) {
+                     console.error('UPSERT Fallback failed:', upsertErr);
+                     alert('Erro crítico: Seu perfil não foi encontrado no banco de dados. Tente deslogar e criar uma conta real.');
+                } else {
+                     console.log('✅ Auto-healed profile via UPSERT', user.id);
+                }
             } else {
                 console.log('Supabase update successful for:', user.id);
             }
