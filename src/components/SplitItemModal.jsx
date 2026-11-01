@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Check } from 'lucide-react';
 
 const SplitItemModal = ({
@@ -12,29 +12,51 @@ const SplitItemModal = ({
     confirmLabel = 'Dividir Item'
 }) => {
     const safeUser = currentUser || { id: 'guest', name: 'Você' };
+    const normalize = (id) => String(id || '').toLowerCase();
 
     // Initial selection logic (default to self if empty)
-    const [selectedUsers, setSelectedUsers] = useState(
-        (initialSelectedUsers && initialSelectedUsers.length > 0)
-            ? initialSelectedUsers
-            : [safeUser.id]
-    );
+    const [selectedUsers, setSelectedUsers] = useState(() => {
+        if (initialSelectedUsers && initialSelectedUsers.length > 0) {
+            return initialSelectedUsers.map(normalize);
+        }
+        return [normalize(safeUser.id)];
+    });
+
+    useEffect(() => {
+        if (initialSelectedUsers && initialSelectedUsers.length > 0) {
+            setSelectedUsers(initialSelectedUsers.map(normalize));
+        } else {
+            setSelectedUsers([normalize(safeUser.id)]);
+        }
+    }, [initialSelectedUsers, safeUser.id]);
 
     if (!item) return null;
 
-    const safeOnlineUsers = Array.isArray(onlineUsers) ? onlineUsers : [safeUser];
+    // Ensure safeUser is in safeOnlineUsers so there is never an empty state
+    const safeOnlineUsers = useMemo(() => {
+        const list = Array.isArray(onlineUsers) ? [...onlineUsers] : [];
+        const hasSelf = list.some(u => normalize(u?.id) === normalize(safeUser?.id));
+        if (!hasSelf && safeUser?.id) {
+            list.unshift(safeUser);
+        }
+        return list.length > 0 ? list : [safeUser];
+    }, [onlineUsers, safeUser]);
+
     const cleanName = item.name ? item.name.replace(/^[\d.]+\/[\d.]+\s/, '') : 'Item';
-    const totalDisplayPrice = item.price || 0;
+    const totalDisplayPrice = item.original_price ? Number(item.original_price) : (Number(item.price) || 0);
 
     const toggleUser = (userId) => {
+        const uid = normalize(userId);
         setSelectedUsers(prev => {
-            if (prev.includes(userId)) return prev.filter(id => id !== userId);
-            return [...prev, userId];
+            if (prev.includes(uid)) {
+                return prev.filter(id => id !== uid);
+            }
+            return [...prev, uid];
         });
     };
 
     const selectAll = () => {
-        const allIds = safeOnlineUsers.map(u => u?.id).filter(Boolean);
+        const allIds = safeOnlineUsers.map(u => normalize(u?.id)).filter(Boolean);
         setSelectedUsers(allIds);
     };
 
@@ -74,7 +96,7 @@ const SplitItemModal = ({
 
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Usuarios na mesa</p>
+                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Usuários na mesa</p>
                         <button onClick={selectAll} style={{
                             background: 'none', border: 'none', color: 'var(--primary)',
                             fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer'
@@ -86,10 +108,13 @@ const SplitItemModal = ({
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(68px, 1fr))', gap: '0.75rem' }}>
                         {safeOnlineUsers.map(u => {
                             if (!u) return null;
-                            const isSelected = selectedUsers.includes(u.id);
-                            const isSelf = u.id === safeUser.id;
-                            const isDisabled = disabledUsers.includes(u.id);
+                            const uid = normalize(u.id);
+                            const isSelected = selectedUsers.includes(uid);
+                            const isSelf = uid === normalize(safeUser.id);
+                            const isDisabled = Array.isArray(disabledUsers) && disabledUsers.map(normalize).includes(uid) && !isSelf;
                             const splitPrice = totalDisplayPrice / (selectedUsers.length || 1);
+                            const avatarUrl = u.avatar_url || u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || 'User')}&background=random`;
+                            const displayName = isSelf ? 'Eu' : (u.name || 'Visitante').split(' ')[0];
 
                             return (
                                 <div
@@ -110,10 +135,10 @@ const SplitItemModal = ({
                                         boxShadow: isSelected ? '0 4px 12px var(--primary-glow)' : 'none',
                                         filter: isDisabled ? 'grayscale(100%)' : 'none'
                                     }}>
-                                        <img src={u.avatar_url || `https://ui-avatars.com/api/?name=${u.name || 'User'}&background=random`} alt={u.name} style={{ width: '100%', height: '100%' }} />
+                                        <img src={avatarUrl} alt={u.name || 'User'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     </div>
                                     <span style={{ fontSize: '0.75rem', fontWeight: isSelected ? 'bold' : 'normal', textAlign: 'center', color: isSelected ? 'white' : 'var(--text-secondary)' }}>
-                                        {isSelf ? 'Eu' : (u.name || 'User').split(' ')[0]}
+                                        {displayName}
                                     </span>
                                     {isSelected && !isDisabled && (
                                         <div style={{

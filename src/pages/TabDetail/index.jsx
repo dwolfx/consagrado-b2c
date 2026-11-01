@@ -5,7 +5,7 @@ import { api, supabase } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useTablePresence } from '../../hooks/useTablePresence';
 import { useToast } from '../../context/ToastContext';
-import SplitTabItemModal from '../../components/SplitTabItemModal';
+import SplitItemModal from '../../components/SplitItemModal';
 
 // Components
 import TabOrderList from './components/TabOrderList';
@@ -125,15 +125,15 @@ const TabDetail = () => {
             />
 
             {splitItem && (
-                <SplitTabItemModal
+                <SplitItemModal
                     item={splitItem}
                     currentUser={user}
                     onlineUsers={onlineUsers}
                     initialSelectedUsers={selectedUsersToSplit}
-                    disabledUsers={existingParticipants}
+                    disabledUsers={[]}
                     onClose={closeSplitModal}
                     onConfirm={handleModalConfirm}
-                    confirmLabel={isEditingSplit ? 'Atualizar Divisão' : 'Confirmar Divisão'}
+                    confirmLabel={isEditingSplit ? 'Atualizar Divisão' : 'Dividir Item'}
                 />
             )}
 

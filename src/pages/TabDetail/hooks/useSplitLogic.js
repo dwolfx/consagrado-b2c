@@ -13,7 +13,6 @@ export const useSplitLogic = (visibleOrders = []) => {
     const [relatedSplitOrders, setRelatedSplitOrders] = useState([]);
 
     // 🧟 Zombie Cleanup: If I am removed from a split group, delete my orphan row
-    // This handles the RLS limitation where the Requester cannot delete my row directly.
     useEffect(() => {
         if (!user || user.id === 'guest' || !visibleOrders) return;
 
@@ -25,10 +24,8 @@ export const useSplitLogic = (visibleOrders = []) => {
             );
 
             for (const myPart of mySplitParts) {
-                // If I am the requester, I am the master (skip)
                 if (myPart.split_requester === user.id) continue;
 
-                // 1. Try to find Master in visible list
                 let master = visibleOrders.find(o =>
                     o.split_requester === myPart.split_requester &&
                     o.ordered_by === myPart.split_requester &&
@@ -36,9 +33,7 @@ export const useSplitLogic = (visibleOrders = []) => {
                     o.table_id === myPart.table_id
                 );
 
-                // 2. Fallback: Check DB if not found locally (RLS might hide it from list)
                 if (!master) {
-                    // We search for the order owned by the requester matching this item
                     const { data, error } = await supabase
                         .from('orders')
                         .select('split_participants, id')
@@ -48,8 +43,6 @@ export const useSplitLogic = (visibleOrders = []) => {
                         .maybeSingle();
 
                     if (error || !data) {
-                        // If we can't find the master order in DB, it's either deleted or we lost access.
-                        // In either case, we are an orphan/zombie.
                         console.log(`🧟 Zombie Cleanup: Master Order unreachable/deleted. Deleting orphan ${myPart.id}`);
                         await api.deleteOrder(myPart.id);
                         addToast("Você foi removido da divisão (Mestre não encontrado).", "info");
@@ -58,7 +51,6 @@ export const useSplitLogic = (visibleOrders = []) => {
                     master = data;
                 }
 
-                // 3. Verify Membership
                 if (master && master.split_participants) {
                     const masterParticipants = master.split_participants.map(id => String(id).toLowerCase());
                     const myId = String(user.id).toLowerCase();
@@ -73,7 +65,7 @@ export const useSplitLogic = (visibleOrders = []) => {
             }
         };
 
-        const timeoutId = setTimeout(cleanupZombies, 2000); // 2s delay for propagation
+        const timeoutId = setTimeout(cleanupZombies, 2000);
         return () => clearTimeout(timeoutId);
 
     }, [visibleOrders, user, addToast]);
@@ -89,10 +81,6 @@ export const useSplitLogic = (visibleOrders = []) => {
         const isSplit = item.is_split && item.split_parts > 1;
 
         if (isSplit) {
-            // EDIT MODE: Find all parts of this split to redistribute
-            // Matching criteria: Same Table, Product, Requester
-            // REMOVED timeDiff check because original orders can be much older than split parts
-
             const siblings = visibleOrders.filter(o =>
                 o.is_split &&
                 o.table_id === item.table_id &&
@@ -100,18 +88,12 @@ export const useSplitLogic = (visibleOrders = []) => {
                 (o.split_requester === item.split_requester || o.split_requester === item.ordered_by)
             );
 
-            // Source of Truth Hierarchy:
-            // Combine both to be safe: DB Metadata + Actual Siblings found locally
-
             const dbParticipants = item.split_participants || [];
             const localParticipants = [...new Set(siblings.map(s => s.ordered_by))];
-
-            // Unique Set of all valid participants
             const allParticipants = [...new Set([...dbParticipants, ...localParticipants])].filter(Boolean);
 
             if (allParticipants.length > 0) {
                 console.log("✏️ Editing Split. Combined Participants:", allParticipants);
-
                 setSelectedUsersToSplit(allParticipants);
                 setRelatedSplitOrders(siblings);
                 setIsEditingSplit(true);
@@ -122,32 +104,53 @@ export const useSplitLogic = (visibleOrders = []) => {
 
         console.log("✨ Opening NEW split modal for:", item);
         setSplitItem(item);
-        // Clean start for new split
-        setSelectedUsersToSplit([]);
+        setSelectedUsersToSplit([user?.id].filter(Boolean));
         setIsEditingSplit(false);
         setRelatedSplitOrders([]);
     };
 
     const handleModalConfirm = async (itemFromModal, finalSelectedUsers) => {
-        if (!itemFromModal || finalSelectedUsers.length === 0) return;
+        if (!itemFromModal || !finalSelectedUsers || finalSelectedUsers.length === 0) return;
 
-        if (isEditingSplit) {
-            await api.redistributeOrder(relatedSplitOrders, finalSelectedUsers);
-            addToast("Divisão atualizada!", "success");
-        } else {
-            await api.requestSplit(itemFromModal, finalSelectedUsers, user.name || 'Alguém', user.id);
-            addToast("Solicitação enviada!", "success");
+        try {
+            if (isEditingSplit) {
+                const ok = await api.redistributeOrder(relatedSplitOrders, finalSelectedUsers);
+                if (ok !== false) {
+                    addToast("Divisão atualizada com sucesso!", "success");
+                } else {
+                    addToast("Erro ao atualizar divisão.", "error");
+                }
+            } else {
+                if (finalSelectedUsers.length <= 1) {
+                    addToast("Selecione mais pessoas na mesa para dividir.", "info");
+                    return;
+                }
+
+                // Divide o pedido diretamente na comanda / banco
+                const success = await api.splitOrder(itemFromModal, finalSelectedUsers);
+                if (success) {
+                    addToast("Pedido dividido com sucesso!", "success");
+                } else {
+                    // Fallback para envio de solicitação via broadcast
+                    await api.requestSplit(itemFromModal, finalSelectedUsers, user?.name || 'Alguém', user?.id);
+                    addToast("Solicitação enviada para a mesa!", "info");
+                }
+            }
+        } catch (err) {
+            console.error("Erro na divisão do pedido:", err);
+            addToast("Ocorreu um erro ao processar a divisão.", "error");
+        } finally {
+            setSplitItem(null);
+            setIsEditingSplit(false);
+            setRelatedSplitOrders([]);
         }
-
-        setSplitItem(null);
-        setIsEditingSplit(false);
-        setRelatedSplitOrders([]);
     };
 
     const closeSplitModal = () => {
         setSplitItem(null);
         setIsEditingSplit(false);
-    }
+        setRelatedSplitOrders([]);
+    };
 
     return {
         splitItem,

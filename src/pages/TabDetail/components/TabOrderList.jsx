@@ -146,7 +146,15 @@ const TabOrderList = ({ myOrders, othersOrders, showAll, setShowAll, onSplitItem
                                 }}>
                                     {statusConfig.label}
                                 </span>
-                                {!isSplit && (
+                                {isSplit ? (
+                                    <span style={{
+                                        fontSize: '0.7rem', color: 'var(--primary)',
+                                        border: '1px solid var(--primary)', padding: '2px 6px', borderRadius: '4px',
+                                        fontWeight: '600'
+                                    }}>
+                                        REDIVIDIR
+                                    </span>
+                                ) : (
                                     <span style={{
                                         fontSize: '0.7rem', color: 'var(--text-secondary)',
                                         border: '1px solid var(--text-secondary)', padding: '2px 6px', borderRadius: '4px'
