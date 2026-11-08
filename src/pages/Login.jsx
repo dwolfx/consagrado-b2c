@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Facebook, Mail, Lock, Sparkles } from 'lucide-react';
+import { Facebook, Mail, Lock, Sparkles, UserCheck } from 'lucide-react';
 import BrandLogo from '../components/BrandLogo';
 import './Login.css';
 
@@ -137,7 +137,7 @@ const Login = () => {
                         onClick={() => setShowGuestModal(true)}
                         className="login-btn-guest"
                     >
-                        <span>⚡</span>
+                        <UserCheck size={16} strokeWidth={2.4} />
                         <span>Entrar como Convidado</span>
                     </button>
 
