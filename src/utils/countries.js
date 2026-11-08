@@ -38,7 +38,7 @@ export const COUNTRIES = [
     { code: 'IL', label: 'Israel', ddi: '+972', flag: '🇮🇱' },
     { code: 'GR', label: 'Grécia', ddi: '+30', flag: '🇬🇷' },
     { code: 'CZ', label: 'República Checa', ddi: '+420', flag: '🇨🇿' },
-    { code: 'HU', label: 'Hungria', ddi: '+36', flag: '🇭🇺' },
+    { code: 'HU', label: 'Hungria', ddi: '+36', flag: 'HUN' },
     { code: 'RO', label: 'Romênia', ddi: '+40', flag: '🇷🇴' },
     { code: 'TH', label: 'Tailândia', ddi: '+66', flag: '🇹🇭' },
     { code: 'VN', label: 'Vietnã', ddi: '+84', flag: '🇻🇳' },
@@ -54,5 +54,9 @@ export const COUNTRIES = [
     { code: 'KE', label: 'Quênia', ddi: '+254', flag: '🇰🇪' }
 ];
 
-// Helper to get country by code
+// Helper to get country by code (with default to Brasil)
 export const getCountry = (code) => COUNTRIES.find(c => c.code === code) || COUNTRIES[0];
+
+export const getCountryByCode = (code) => COUNTRIES.find(c => c.code === code);
+
+export const getCountryByDDI = (ddi) => COUNTRIES.find(c => c.ddi === ddi);

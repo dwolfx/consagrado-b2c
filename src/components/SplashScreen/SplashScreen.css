@@ -1,0 +1,160 @@
+/* ==========================================================================
+   SplashScreen.css — Tela Oficial de Loading / Splash Screen CONSAgrado
+   Estilos isolados sem Tailwind e sem estilos inline
+   ========================================================================== */
+
+.splash-screen-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    user-select: none;
+    background:
+        radial-gradient(circle at 85% 18%, rgba(245, 158, 11, 0.45) 0%, transparent 45%),
+        radial-gradient(circle at 18% 80%, rgba(139, 92, 246, 0.50) 0%, transparent 48%),
+        radial-gradient(circle at 55% 50%, rgba(236, 72, 153, 0.35) 0%, transparent 52%),
+        linear-gradient(155deg, #180b2d 0%, #0d122e 45%, #230c1e 100%);
+    background-size: cover;
+    opacity: 1;
+    transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.splash-screen-overlay--exiting {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.splash-screen-backdrop {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.35);
+    pointer-events: none;
+}
+
+.splash-screen-ambient-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20rem;
+    height: 20rem;
+    margin-top: -10rem;
+    margin-left: -10rem;
+    border-radius: 9999px;
+    background: linear-gradient(
+        to top right,
+        rgba(245, 158, 11, 0.35),
+        rgba(251, 191, 36, 0.15)
+    );
+    filter: blur(64px);
+    pointer-events: none;
+    animation: splashAmbientGlow 4s ease-in-out infinite;
+}
+
+.splash-screen-content {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 0 1.25rem;
+    animation: splashContentEnter 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.splash-screen-icon-box {
+    width: 8rem;
+    height: 8rem;
+    border-radius: 32px;
+    overflow: hidden;
+    background-color: #1a1a1a;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow:
+        0 25px 50px -12px rgba(0, 0, 0, 0.75),
+        0 18px 40px -10px rgba(245, 158, 11, 0.22);
+    margin-bottom: 1.25rem;
+    flex-shrink: 0;
+}
+
+.splash-screen-svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.splash-screen-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.splash-screen-heading {
+    margin: 0;
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 900;
+    letter-spacing: -0.025em;
+    color: #ffffff;
+}
+
+.splash-screen-heading-accent {
+    color: #f59e0b;
+}
+
+.splash-screen-tagline {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    color: #a1a1aa;
+}
+
+.splash-screen-spinner-wrap {
+    padding-top: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.splash-screen-spinner {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 9999px;
+    border: 2px solid rgba(245, 158, 11, 0.20);
+    border-top-color: #f59e0b;
+    animation: splashSpin 0.9s linear infinite;
+}
+
+@keyframes splashSpin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes splashAmbientGlow {
+    0%, 100% {
+        opacity: 0.35;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.65;
+        transform: scale(1.1);
+    }
+}
+
+@keyframes splashContentEnter {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}

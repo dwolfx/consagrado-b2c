@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { Beer, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
+import AuthHeader from '../components/auth/AuthHeader';
+import { maskCPF } from '../utils/masks';
+import { Input, PhoneInput, Button } from '../components/ui';
 
 const Register = () => {
     const { register } = useAuth();
@@ -15,33 +18,15 @@ const Register = () => {
         password: '',
         confirmPassword: ''
     });
+    const [selectedCountry, setSelectedCountry] = useState({ code: 'BR', ddi: '+55' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-
-    // Masks
-    const maskCPF = (value) => {
-        return value
-            .replace(/\D/g, '')
-            .replace(/(\d{3})(\d)/, '$1.$2')
-            .replace(/(\d{3})(\d)/, '$1.$2')
-            .replace(/(\d{3})(\d{1,2})/, '$1-$2')
-            .replace(/(-\d{2})\d+?$/, '$1');
-    };
-
-    const maskPhone = (value) => {
-        return value
-            .replace(/\D/g, '')
-            .replace(/(\d{2})(\d)/, '($1) $2')
-            .replace(/(\d{5})(\d)/, '$1-$2')
-            .replace(/(-\d{4})\d+?$/, '$1');
-    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         let formattedValue = value;
 
         if (name === 'cpf') formattedValue = maskCPF(value);
-        if (name === 'phone') formattedValue = maskPhone(value);
 
         setFormData(prev => ({ ...prev, [name]: formattedValue }));
     };
@@ -70,42 +55,38 @@ const Register = () => {
         }
 
         setLoading(true);
-        // Call register from AuthContext
-        const { success, error } = await register(
+        const fullPhone = formData.phone
+            ? (selectedCountry.code === 'BR' ? formData.phone : `${selectedCountry.ddi} ${formData.phone}`)
+            : '';
+        const { success, error: regError } = await register(
             formData.name,
             formData.email,
             formData.password,
-            formData.phone,
+            fullPhone,
             formData.cpf
         );
 
         if (success) {
-            alert('Conta criada com sucesso! 📧\n\nPor favor, verifique seu e-mail para confirmar o cadastro antes de fazer login.');
             navigate('/login');
         } else {
-            setError(error || 'Erro ao cadastrar.');
+            setError(regError?.message || 'Erro ao criar conta.');
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
-        <div className="container fade-in" style={{ justifyContent: 'center', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-
-            <button onClick={() => navigate(-1)} className="btn-ghost" style={{ position: 'absolute', top: '1rem', left: '1rem', width: 'auto' }}>
+        <div className="container" style={{ justifyContent: 'center', minHeight: '100vh', position: 'relative' }}>
+            <button
+                type="button"
+                onClick={() => navigate('/login')}
+                className="btn-ghost"
+                aria-label="Voltar"
+                style={{ position: 'absolute', top: '1rem', left: '1rem', width: 'auto', padding: 0 }}
+            >
                 <ArrowLeft />
             </button>
 
-            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                <div style={{
-                    width: '60px', height: '60px', background: 'var(--primary)',
-                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    margin: '0 auto 1rem auto', boxShadow: '0 8px 20px rgba(99, 102, 241, 0.3)'
-                }}>
-                    <Beer size={30} color="white" />
-                </div>
-                <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Criar Conta</h1>
-                <p style={{ color: 'var(--text-secondary)' }}>Junte-se ao rolê!</p>
-            </div>
+            <AuthHeader title="Criar Conta" subtitle="Junte-se ao rolê!" />
 
             <form onSubmit={handleRegister} style={{ width: '100%', maxWidth: '320px', margin: '0 auto' }}>
                 {error && (
@@ -114,92 +95,77 @@ const Register = () => {
                     </div>
                 )}
 
-                <div style={{ marginBottom: '1rem' }}>
-                    <input
-                        name="name"
-                        placeholder="Nome Completo"
-                        className="input-field"
-                        value={formData.name}
-                        onChange={handleChange}
-                        required
-                        style={{ width: '100%' }}
-                    />
-                </div>
+                <Input
+                    name="name"
+                    placeholder="Nome Completo"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                />
 
-                <div style={{ marginBottom: '1rem' }}>
-                    <input
-                        name="cpf"
-                        placeholder="CPF"
-                        className="input-field"
-                        value={formData.cpf}
-                        onChange={handleChange}
-                        required
-                        maxLength={14}
-                        style={{ width: '100%' }}
-                    />
-                </div>
+                <Input
+                    name="cpf"
+                    placeholder="CPF"
+                    value={formData.cpf}
+                    onChange={handleChange}
+                    required
+                    maxLength={14}
+                />
 
-                <div style={{ marginBottom: '1rem' }}>
-                    <input
-                        name="email"
-                        type="email"
-                        placeholder="E-mail"
-                        className="input-field"
-                        value={formData.email}
-                        onChange={handleChange}
-                        required
-                        style={{ width: '100%' }}
-                    />
-                </div>
-                <div style={{ marginBottom: '1rem' }}>
-                    <input
-                        name="phone"
-                        type="tel"
-                        placeholder="Celular (WhatsApp)"
-                        className="input-field"
-                        value={formData.phone}
-                        onChange={handleChange}
-                        required
-                        maxLength={15}
-                        style={{ width: '100%' }}
-                    />
-                </div>
-                <div style={{ marginBottom: '1rem' }}>
-                    <input
-                        name="password"
-                        type="password"
-                        placeholder="Senha"
-                        className="input-field"
-                        value={formData.password}
-                        onChange={handleChange}
-                        required
-                        style={{ width: '100%' }}
-                    />
-                </div>
-                <div style={{ marginBottom: '1.5rem' }}>
-                    <input
-                        name="confirmPassword"
-                        type="password"
-                        placeholder="Confirmar Senha"
-                        className="input-field"
-                        value={formData.confirmPassword}
-                        onChange={handleChange}
-                        required
-                        style={{ width: '100%' }}
-                    />
-                </div>
+                <Input
+                    name="email"
+                    type="email"
+                    placeholder="E-mail"
+                    value={formData.email}
+                    onChange={handleChange}
+                    required
+                />
+
+                <PhoneInput
+                    name="phone"
+                    placeholder="Celular (WhatsApp)"
+                    defaultCountry="BR"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    onCountryChange={setSelectedCountry}
+                    required
+                />
+
+                <Input
+                    name="password"
+                    type="password"
+                    placeholder="Senha"
+                    value={formData.password}
+                    onChange={handleChange}
+                    required
+                />
+
+                <Input
+                    name="confirmPassword"
+                    type="password"
+                    placeholder="Confirmar Senha"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    required
+                />
 
                 <div style={{ marginBottom: '1rem', fontSize: '0.8rem', color: 'var(--text-tertiary)', textAlign: 'center' }}>
                     Ao se cadastrar, você concorda com nossos termos.
                 </div>
 
-                <button type="submit" className="btn btn-primary" disabled={loading} style={{ width: '100%', marginBottom: '1.5rem', padding: '1rem' }}>
+                <Button
+                    type="submit"
+                    variant="primary"
+                    fullWidth
+                    loading={loading}
+                    style={{ marginBottom: '1.5rem', padding: '1rem' }}
+                >
                     {loading ? 'Criando...' : 'Cadastrar'}
-                </button>
+                </Button>
             </form>
 
             <div style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                Already have an account? <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 600 }}>Entrar</Link>
+                Já tem uma conta? <Link to="/login" style={{ color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}>Entrar</Link>
             </div>
         </div>
     );

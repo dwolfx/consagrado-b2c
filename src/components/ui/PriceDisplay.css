@@ -1,0 +1,51 @@
+.ui-price-display {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.375rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.ui-price-value {
+    font-weight: 700;
+}
+
+.ui-price-value-sm {
+    font-size: 0.95rem;
+}
+
+.ui-price-value-md {
+    font-size: 1.15rem;
+}
+
+.ui-price-value-lg {
+    font-size: 1.5rem;
+}
+
+.ui-price-value-xl {
+    font-size: 2rem;
+}
+
+.ui-price-color-default {
+    color: var(--text-primary);
+}
+
+.ui-price-color-success {
+    color: var(--success);
+}
+
+.ui-price-color-brand {
+    color: var(--brand-color);
+}
+
+.ui-price-split {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.ui-price-original {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-decoration: line-through;
+    margin-right: 0.25rem;
+}

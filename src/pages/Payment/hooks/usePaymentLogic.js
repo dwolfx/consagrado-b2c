@@ -77,16 +77,15 @@ export const usePaymentLogic = () => {
     const displayedTip = feeRemoved ? 0 : tipValue;
 
     // Machine Fee (4%) + App Fee
-    // Machine Fee applies to subtotal + tip (usually) or just subtotal? 
-    // Logic from original: (subtotal + displayedTip) * 0.04
     const machineFeeValue = (subtotal + displayedTip) * 0.04;
     const operationalFeeValue = machineFeeValue + applicableAppFee;
 
     const total = subtotal + displayedTip + operationalFeeValue;
 
     // Actions
-    const handleRemoveFee = () => {
-        if (removeFeeReason.trim().length < 5) {
+    const handleRemoveFee = (customReason) => {
+        const reason = typeof customReason === 'string' ? customReason : removeFeeReason;
+        if (reason.trim().length < 5) {
             alert("Por favor, explique o motivo.");
             return false;
         }
@@ -97,16 +96,17 @@ export const usePaymentLogic = () => {
 
     const handlePayment = async () => {
         setLoading(true);
-        // Simulate delay
-        await new Promise(r => setTimeout(r, 1500));
-
-        const tableId = localStorage.getItem('my_table_id');
-        if (tableId && user?.id) {
-            await api.payUserOrders(tableId, user.id);
+        try {
+            const tableId = localStorage.getItem('my_table_id');
+            if (tableId && user?.id) {
+                await api.payUserOrders(tableId, user.id);
+            }
+            setSuccess(true);
+        } catch (err) {
+            console.error("Error during payment:", err);
+        } finally {
+            setLoading(false);
         }
-
-        setSuccess(true);
-        setLoading(false);
     };
 
     return {

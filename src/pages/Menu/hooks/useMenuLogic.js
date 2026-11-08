@@ -19,7 +19,8 @@ export const useMenuLogic = (user, addToast, navigate) => {
     const [establishmentName, setEstablishmentName] = useState('');
 
     // Cart State
-    const [cart, setCart] = useState({});
+    const [cart, setCart] = useState(() => { try { const s = localStorage.getItem('b2c_shared_cart'); return s ? JSON.parse(s) : {}; } catch { return {}; } });
+    useEffect(() => { try { localStorage.setItem('b2c_shared_cart', JSON.stringify(cart)); } catch {} }, [cart]);
     const [customItems, setCustomItems] = useState({});
     const [sending, setSending] = useState(false);
 
@@ -35,7 +36,18 @@ export const useMenuLogic = (user, addToast, navigate) => {
             let currentEstabId = 1;
             let settings = {};
 
-            if (!tableId) {
+            const entryEstablishmentId = localStorage.getItem('b2c_entry_establishment_id');
+
+            if (!tableId && entryEstablishmentId) {
+                try {
+                    const estab = await api.getEstablishment(entryEstablishmentId);
+                    if (estab) {
+                        currentEstabId = estab.id;
+                        setEstablishmentName(estab.name);
+                        settings = estab.settings || {};
+                    }
+                } catch (e) { console.error(e) }
+            } else if (!tableId) {
                 try {
                     const estab = await api.getEstablishment(1);
                     if (estab) {
@@ -89,35 +101,37 @@ export const useMenuLogic = (user, addToast, navigate) => {
     useEffect(() => {
         let channel;
         if (user?.id) {
-            console.log(`📡 Listening for Split Responses on user_notifications:${user.id} `);
+            console.log(`📡 Listening for Split Responses on user_notifications:${user.id}`);
             channel = supabase.channel(`user_notifications:${user.id}`)
-                .on('broadcast', { event: 'split_response' }, (payload) => {
-                    if (payload.payload.status === 'accepted') {
+                .on('broadcast', { event: 'split_response' }, async (payload) => {
+                    const { status, responderName: rName } = payload.payload;
+                    if (status === 'accepted') {
                         setWaitStatus('accepted');
-                        setResponderName(payload.payload.responderName);
-                    } else if (payload.payload.status === 'rejected') {
+                        setResponderName(rName);
+                        // B aceitou a divisão! Agora envia a parte de A para a cozinha
+                        setTimeout(async () => {
+                            await finalizeSplitOrder(true);
+                        }, 1200);
+                    } else if (status === 'rejected') {
                         setWaitStatus('rejected');
-                        setResponderName(payload.payload.responderName);
+                        setResponderName(rName);
                     }
                 })
                 .subscribe();
         }
         return () => { if (channel) supabase.removeChannel(channel); };
-    }, [user?.id]);
+    }, [user?.id, pendingSplitData]);
 
-    // --- LISTEN FOR AUTO PROCEED ---
-    useEffect(() => {
-        if (waitStatus === 'accepted') {
-            const timer = setTimeout(() => {
-                finalizeSplitOrder(true);
-            }, 2000);
-            return () => clearTimeout(timer);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [waitStatus]); // Intentionally omitting finalizeSplitOrder matching original logic
+    // Auto-proceed removido: o pedido do solicitante vai pra cozinha imediatamente em handleSplitConfirm
+    // O waitStatus agora é apenas UI feedback, não bloqueia o envio
 
     // --- CART HELPERS ---
     const updateCartDirect = (userId, item, delta) => {
+        if (delta > 0 && item?.is_out_of_stock) {
+            addToast(`${item.name} está em falta.`, 'warning');
+            return;
+        }
+
         setCart(prev => {
             const userCart = prev[userId] || {};
             const currentQty = userCart[item.id] || 0;
@@ -134,6 +148,11 @@ export const useMenuLogic = (user, addToast, navigate) => {
     };
 
     const handleItemClick = (item) => {
+        if (item?.is_out_of_stock) {
+            addToast(`${item.name} está em falta.`, 'warning');
+            return;
+        }
+
         updateCartDirect(user?.id || 'guest', item, 1);
         addToast(`${item.name} adicionado!`, 'success');
     };
@@ -187,18 +206,12 @@ export const useMenuLogic = (user, addToast, navigate) => {
             return;
         }
 
-        const currentTotal = products.reduce((acc, item) => {
-            let qty = cartToProcess[item.id] || 0;
-            return acc + (item.price * qty);
-        }, 0) + Object.values(itemsSource).reduce((acc, item) => {
-            let qty = cartToProcess[item.id] || 0;
-            return acc + (item.price * qty);
-        }, 0);
-
+        // Se há mais de 1 pessoa na mesa, abre modal de divisão antes de enviar
         if (onlineUsers.length > 1) {
+            const itemsSource2 = customItemsOverride || customItems;
             const cartItems = Object.entries(cartToProcess).map(([pid, qty]) => {
                 let product = products.find(p => String(p.id) === String(pid));
-                if (!product && itemsSource[pid]) product = itemsSource[pid];
+                if (!product && itemsSource2[pid]) product = itemsSource2[pid];
                 return {
                     productId: pid,
                     quantity: qty,
@@ -207,18 +220,20 @@ export const useMenuLogic = (user, addToast, navigate) => {
                     metadata: product?.metadata || {}
                 };
             });
-            const virtualItem = {
-                name: 'Total do Pedido',
-                price: currentTotal,
-                id: 'cart-total',
-                items: cartItems
-            };
-            setSplittingItem(virtualItem);
+            const currentTotal = products.reduce((acc, item) => {
+                const qty = cartToProcess[item.id] || 0;
+                return acc + (item.price * qty);
+            }, 0) + Object.values(itemsSource).reduce((acc, item) => {
+                const qty = cartToProcess[item.id] || 0;
+                return acc + (item.price * qty);
+            }, 0);
+            setSplittingItem({ name: 'Total do Pedido', price: currentTotal, id: 'cart-total', items: cartItems });
             return;
         }
 
         setSending(true);
         try {
+            const batchId = crypto.randomUUID();
             const orderPromises = [];
             Object.entries(cartToProcess).forEach(([productId, qty]) => {
                 let product = products.find(p => String(p.id) === String(productId));
@@ -230,7 +245,8 @@ export const useMenuLogic = (user, addToast, navigate) => {
                         price: product.price,
                         quantity: qty,
                         orderedBy: user.id,
-                        metadata: product.metadata
+                        metadata: product.metadata,
+                        batchId
                     }));
                 }
             });
@@ -250,21 +266,60 @@ export const useMenuLogic = (user, addToast, navigate) => {
         processOrder(cart[user?.id] || {});
     };
 
+    // Abre o modal de divisão manualmente (chamado pelo botão "Dividir" no CartFooter)
+    const handleOpenSplit = () => {
+        const myCart = cart[user?.id] || {};
+        if (Object.keys(myCart).length === 0) return;
+
+        const itemsSource = customItems;
+        const cartItems = Object.entries(myCart).map(([pid, qty]) => {
+            let product = products.find(p => String(p.id) === String(pid));
+            if (!product && itemsSource[pid]) product = itemsSource[pid];
+            return {
+                productId: pid,
+                quantity: qty,
+                name: product?.name || 'Item Desconhecido',
+                price: product?.price || 0,
+                metadata: product?.metadata || {}
+            };
+        });
+
+        const currentTotal = products.reduce((acc, item) => {
+            const qty = myCart[item.id] || 0;
+            return acc + (item.price * qty);
+        }, 0) + Object.values(itemsSource).reduce((acc, item) => {
+            const qty = myCart[item.id] || 0;
+            return acc + (item.price * qty);
+        }, 0);
+
+        setSplittingItem({
+            name: 'Total do Pedido',
+            price: currentTotal,
+            id: 'cart-total',
+            items: cartItems
+        });
+    };
+
     const handleSplitConfirm = async (item, selectedUserIds) => {
         if (!selectedUserIds || selectedUserIds.length === 0) return;
         setSplittingItem(null);
-        setPendingSplitData({ selectedUserIds });
-        setWaitStatus('waiting');
+
+        const others = selectedUserIds.filter(uid => uid !== user.id);
+        const totalParts = selectedUserIds.length;
+
+        // Gera um batchId único para este pedido — compartilhado com todos os participantes
+        const batchId = crypto.randomUUID();
+
+        setPendingSplitData({ selectedUserIds, batchId });
+
+        if (others.length === 0) {
+            // Apenas eu — sem divisão, vai direto pra cozinha
+            await finalizeSplitOrder(false, { selectedUserIds, batchId });
+            return;
+        }
 
         try {
-            const others = selectedUserIds.filter(uid => uid !== user.id);
-            const totalParts = selectedUserIds.length;
-
-            if (others.length === 0) {
-                await finalizeSplitOrder(false, { selectedUserIds });
-                return;
-            }
-
+            // 1. Notifica os outros ANTES de navegar (cart ainda está intacto para eles lerem)
             for (const uid of others) {
                 await api.requestOrderShare({
                     name: item.name,
@@ -274,13 +329,16 @@ export const useMenuLogic = (user, addToast, navigate) => {
                     items: item.items,
                     totalParts: totalParts,
                     tableId: tableId,
-                    requesterId: user.id
+                    requesterId: user.id,
+                    batchId                 // ← B usará o mesmo batchId
                 }, uid, user.name || 'Alguém', user.id);
             }
         } catch (error) {
-            setWaitStatus('idle');
-            addToast('Erro ao solicitar divisão.', 'error');
+            console.warn('Erro ao notificar participantes da divisão:', error);
         }
+
+        // 2. Não envia direto para a cozinha: abre o modal de espera até B aceitar
+        setWaitStatus('waiting');
     };
 
     const finalizeSplitOrder = async (isSplit, overrideData = null) => {
@@ -289,7 +347,7 @@ export const useMenuLogic = (user, addToast, navigate) => {
         const splitData = overrideData || pendingSplitData;
         if (!splitData) { setSending(false); return; }
 
-        const { selectedUserIds } = splitData;
+        const { selectedUserIds, batchId } = splitData;
         const finalUserIds = isSplit ? selectedUserIds : [user.id];
 
         try {
@@ -316,20 +374,22 @@ export const useMenuLogic = (user, addToast, navigate) => {
                         if (finalUserIds.includes(user.id)) {
                             const totalParts = finalUserIds.length;
                             const splitPrice = realPrice / totalParts;
-                            const splitName = totalParts > 1 ? `1 / ${totalParts} ${product.name} ` : product.name;
+                            const isActuallySplit = isSplit && totalParts > 1;
+                            // Nome limpo no banco — display calcula "1/X" via is_split + split_parts
                             if (splitPrice > 0) {
                                 orderPromises.push(api.addOrder(tableId, {
                                     productId: product.id,
-                                    name: splitName,
+                                    name: product.name,
                                     price: splitPrice,
                                     quantity: qty,
                                     orderedBy: user.id,
-                                    isSplit: true,
-                                    splitParts: totalParts,
-                                    originalPrice: realPrice,
-                                    splitRequester: user.id,
-                                    splitParticipants: finalUserIds,
-                                    metadata: product.metadata
+                                    isSplit: isActuallySplit,
+                                    splitParts: isActuallySplit ? totalParts : 1,
+                                    originalPrice: isActuallySplit ? realPrice : null,
+                                    splitRequester: isActuallySplit ? user.id : null,
+                                    splitParticipants: isActuallySplit ? finalUserIds : null,
+                                    metadata: product.metadata,
+                                    batchId: batchId || null
                                 }));
                             }
                         }
@@ -370,6 +430,7 @@ export const useMenuLogic = (user, addToast, navigate) => {
             responderName,
             setSplittingItem,
             handleSplitConfirm,
+            handleOpenSplit,
             reset: () => { setWaitStatus('idle'); setPendingSplitData(null); },
             continueAlone: () => finalizeSplitOrder(false)
         },

@@ -1,0 +1,501 @@
+/* ==========================================================================
+   Consagrado B2C - Login Screen Glassmorphism Stylesheet
+   ========================================================================== */
+
+:root {
+    --login-bg: #090a0d;
+    --login-brand-gold: #f59e0b;
+    --login-brand-gold-hover: #fbbf24;
+    --login-brand-amber-dark: #d97706;
+    --login-brand-glow: rgba(245, 158, 11, 0.28);
+    --login-glass-card-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.015) 100%);
+    --login-glass-input-bg: rgba(255, 255, 255, 0.04);
+    --login-glass-border: rgba(255, 255, 255, 0.11);
+    --login-glass-border-focus: rgba(245, 158, 11, 0.55);
+    --login-glass-highlight: rgba(255, 255, 255, 0.2);
+    --login-text-primary: #ffffff;
+    --login-text-muted: rgba(255, 255, 255, 0.55);
+    --login-text-dim: rgba(255, 255, 255, 0.35);
+    --login-facebook-blue: #1877f2;
+}
+
+.login-viewport {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--login-bg);
+    position: relative;
+    overflow-x: hidden;
+    padding: 1.5rem 1rem 1.5rem;
+    box-sizing: border-box;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--login-text-primary);
+}
+
+/* Ambient Backlight Lighting Orbs for Glass refraction */
+.login-glow-orb-top {
+    position: absolute;
+    top: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 380px;
+    height: 380px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.22) 0%, rgba(217, 119, 6, 0.08) 40%, transparent 70%);
+    filter: blur(40px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.login-glow-orb-bottom {
+    position: absolute;
+    bottom: -120px;
+    right: -40px;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.1) 0%, transparent 65%);
+    filter: blur(50px);
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* Main Content Container */
+.login-content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: auto auto;
+    box-sizing: border-box;
+}
+
+/* Hero Branding */
+.login-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 1.75rem;
+    width: 100%;
+}
+
+/* Glassmorphism Card Container */
+.login-card {
+    width: 100%;
+    background: var(--login-glass-card-bg);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    border: 1px solid var(--login-glass-border);
+    border-radius: 26px;
+    padding: 1.5rem 1.25rem;
+    box-shadow: 
+        inset 0 1px 1.5px 0 var(--login-glass-highlight),
+        0 24px 48px -12px rgba(0, 0, 0, 0.65),
+        0 0 0 1px rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.95rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Error Banner */
+.login-error-banner {
+    background: rgba(239, 68, 68, 0.14);
+    color: #fca5a5;
+    padding: 0.85rem 1rem;
+    border-radius: 14px;
+    font-size: 0.875rem;
+    text-align: center;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    animation: loginFadeIn 0.3s ease;
+}
+
+@keyframes loginFadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Form */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+/* Glass Input Wrapper */
+.login-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.login-input-icon {
+    position: absolute;
+    left: 1rem;
+    color: var(--login-brand-gold);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.login-input-field {
+    width: 100%;
+    min-width: 0;
+    padding: 0.95rem 1rem 0.95rem 2.85rem;
+    border-radius: 14px;
+    font-size: 0.95rem;
+    background: var(--login-glass-input-bg);
+    border: 1px solid var(--login-glass-border);
+    color: #ffffff;
+    outline: none;
+    box-sizing: border-box;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);
+    transition: all 0.2s ease;
+}
+
+.login-input-field::placeholder {
+    color: var(--login-text-dim);
+}
+
+.login-input-field:focus {
+    border-color: var(--login-glass-border-focus);
+    background: rgba(255, 255, 255, 0.065);
+    box-shadow: 
+        0 0 0 3px rgba(245, 158, 11, 0.18),
+        inset 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Primary Login Button */
+.login-btn-primary {
+    width: 100%;
+    margin-top: 0.35rem;
+    padding: 1rem;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--login-brand-gold) 0%, var(--login-brand-amber-dark) 100%);
+    color: #0b0c10;
+    border: none;
+    cursor: pointer;
+    box-sizing: border-box;
+    box-shadow: 
+        0 10px 24px -4px var(--login-brand-glow),
+        inset 0 1px 1px 0 rgba(255, 255, 255, 0.45);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.login-btn-primary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    filter: brightness(1.06);
+    box-shadow: 0 12px 28px -2px rgba(245, 158, 11, 0.4);
+}
+
+.login-btn-primary:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.login-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* Forgot Password Link */
+.login-forgot-wrap {
+    text-align: center;
+    margin: 0.1rem 0;
+}
+
+.login-forgot-link {
+    color: var(--login-text-muted);
+    font-size: 0.875rem;
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.login-forgot-link:hover {
+    color: var(--login-brand-gold);
+}
+
+/* Convidado Button (Frosted Amber Glass) */
+.login-btn-guest {
+    width: 100%;
+    padding: 0.9rem 1rem;
+    border-radius: 14px;
+    font-size: 0.925rem;
+    font-weight: 700;
+    background: rgba(245, 158, 11, 0.08);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: var(--login-brand-gold-hover);
+    cursor: pointer;
+    box-sizing: border-box;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.login-btn-guest:hover {
+    background: rgba(245, 158, 11, 0.15);
+    border-color: rgba(245, 158, 11, 0.55);
+    transform: translateY(-1px);
+}
+
+.login-btn-guest:active {
+    transform: translateY(1px);
+}
+
+/* Divider with Glass Line */
+.login-divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 1.5rem 0 1.25rem;
+    width: 100%;
+}
+
+.login-divider-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+}
+
+.login-divider-text {
+    color: var(--login-text-dim);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+}
+
+/* Social Buttons Row */
+.login-social-row {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    width: 100%;
+}
+
+.login-social-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    box-sizing: border-box;
+}
+
+.login-social-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.login-social-btn:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.login-social-btn.google {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 
+        inset 0 1px 1px rgba(255, 255, 255, 0.25),
+        0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.login-social-btn.google:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+}
+
+.login-social-btn.facebook {
+    background: linear-gradient(145deg, #1877f2 0%, #1464cc 100%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 
+        inset 0 1px 1px rgba(255, 255, 255, 0.35),
+        0 8px 18px rgba(24, 119, 242, 0.35);
+}
+
+.login-social-btn.facebook:hover {
+    filter: brightness(1.1);
+}
+
+.login-social-btn.apple {
+    background: rgba(20, 21, 26, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 
+        inset 0 1px 1px rgba(255, 255, 255, 0.2),
+        0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.login-social-btn.apple:hover {
+    background: rgba(30, 32, 40, 0.9);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Footer Register */
+.login-footer {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    color: var(--login-text-muted);
+    font-size: 0.925rem;
+    margin-top: 2rem;
+}
+
+.login-register-link {
+    color: var(--login-brand-gold);
+    font-weight: 700;
+    text-decoration: none;
+    margin-left: 0.25rem;
+    transition: color 0.2s ease;
+}
+
+.login-register-link:hover {
+    color: var(--login-brand-gold-hover);
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   Guest Modal (Frosted Glass Backdrop & Dialog)
+   ========================================================================== */
+.guest-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(5, 6, 8, 0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    animation: guestModalFade 0.25s ease;
+}
+
+@keyframes guestModalFade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.guest-modal-box {
+    width: 100%;
+    max-width: 360px;
+    background: linear-gradient(145deg, rgba(30, 32, 42, 0.95) 0%, rgba(18, 19, 26, 0.95) 100%);
+    border: 1px solid var(--login-glass-border);
+    border-radius: 24px;
+    padding: 1.75rem 1.5rem;
+    box-shadow: 
+        inset 0 1px 1px rgba(255, 255, 255, 0.25),
+        0 30px 60px rgba(0, 0, 0, 0.75);
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem;
+    animation: guestModalSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes guestModalSlide {
+    from { opacity: 0; transform: translateY(18px) scale(0.96); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.guest-modal-header {
+    text-align: center;
+}
+
+.guest-modal-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: var(--login-brand-gold);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    margin-bottom: 0.75rem;
+}
+
+.guest-modal-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: 0 0 0.35rem;
+    color: #ffffff;
+}
+
+.guest-modal-subtitle {
+    font-size: 0.85rem;
+    color: var(--login-text-muted);
+    margin: 0;
+    line-height: 1.4;
+}
+
+.guest-modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin-top: 0.5rem;
+}
+
+.guest-modal-btn-submit {
+    padding: 0.95rem;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--login-brand-gold) 0%, var(--login-brand-amber-dark) 100%);
+    color: #0b0c10;
+    border: none;
+    font-size: 1rem;
+    font-weight: 800;
+    cursor: pointer;
+    box-shadow: 0 8px 20px var(--login-brand-glow);
+    transition: all 0.2s ease;
+}
+
+.guest-modal-btn-submit:hover {
+    filter: brightness(1.08);
+}
+
+.guest-modal-btn-cancel {
+    padding: 0.75rem;
+    border-radius: 14px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--login-text-muted);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.guest-modal-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: #ffffff;
+}

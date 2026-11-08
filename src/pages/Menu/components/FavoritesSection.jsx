@@ -49,7 +49,7 @@ const FavoritesSection = ({ userId, onItemClick }) => {
         <div className="fade-in" style={{ marginBottom: '1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', paddingLeft: '0.25rem' }}>
                 <Star size={18} fill="var(--brand-color)" color="var(--brand-color)" />
-                <h3 style={{ fontSize: '1rem', margin: 0 }}>Pedir Novamente</h3>
+                <h3 style={{ fontSize: '1rem', margin: 0 }}>Favoritos</h3>
             </div>
             <div style={{
                 display: 'flex', gap: '0.75rem', overflowX: 'auto',

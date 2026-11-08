@@ -1,38 +1,32 @@
 import React from 'react';
+import { ChevronRight } from 'lucide-react';
 
 const CartFooter = ({ count, total, sending, onCheckout }) => {
     if (count === 0) return null;
 
+    const formattedTotal = Number(total || 0).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    });
+
     return (
-        <div style={{
-            position: 'fixed', bottom: '1rem', left: '1rem', right: '1rem',
-            animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-            zIndex: 100 // Ensure above other content
-        }}>
+        <div className="menu-cart-dock-wrap">
             <button
+                type="button"
                 onClick={onCheckout}
                 disabled={sending}
-                className="btn btn-primary"
-                style={{
-                    borderRadius: '16px', padding: '1rem',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    boxShadow: '0 10px 25px -5px var(--primary-glow)',
-                    width: '100%'
-                }}
+                className="menu-cart-dock"
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{
-                        backgroundColor: 'rgba(255,255,255,0.2)', width: '28px', height: '28px',
-                        borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '0.9rem', fontWeight: 'bold'
-                    }}>
-                        {count}
-                    </div>
-                    <span>Fazer pedido</span>
+                <div className="menu-cart-left">
+                    <div className="menu-cart-count">{count}</div>
+                    <span className="menu-cart-label">Fazer pedido</span>
                 </div>
-                <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>
-                    {sending ? 'Enviando...' : total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </span>
+                <div className="menu-cart-right">
+                    <span className="menu-cart-total">
+                        {sending ? 'Enviando...' : formattedTotal}
+                    </span>
+                    {!sending && <ChevronRight size={18} strokeWidth={2.5} />}
+                </div>
             </button>
         </div>
     );

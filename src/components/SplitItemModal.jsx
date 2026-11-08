@@ -11,8 +11,12 @@ const SplitItemModal = ({
     disabledUsers = [],
     confirmLabel = 'Dividir Item'
 }) => {
-    const safeUser = currentUser || { id: 'guest', name: 'Você' };
+    const safeUser = useMemo(() => currentUser || { id: 'guest', name: 'Você' }, [currentUser]);
     const normalize = (id) => String(id || '').toLowerCase();
+
+    const initialUsersKey = useMemo(() => {
+        return (initialSelectedUsers || []).map(normalize).sort().join(',');
+    }, [initialSelectedUsers]);
 
     // Initial selection logic (default to self if empty)
     const [selectedUsers, setSelectedUsers] = useState(() => {
@@ -23,14 +27,12 @@ const SplitItemModal = ({
     });
 
     useEffect(() => {
-        if (initialSelectedUsers && initialSelectedUsers.length > 0) {
-            setSelectedUsers(initialSelectedUsers.map(normalize));
+        if (initialUsersKey) {
+            setSelectedUsers(initialUsersKey.split(',').filter(Boolean));
         } else {
             setSelectedUsers([normalize(safeUser.id)]);
         }
-    }, [initialSelectedUsers, safeUser.id]);
-
-    if (!item) return null;
+    }, [initialUsersKey, safeUser.id]);
 
     // Ensure safeUser is in safeOnlineUsers so there is never an empty state
     const safeOnlineUsers = useMemo(() => {
@@ -41,6 +43,8 @@ const SplitItemModal = ({
         }
         return list.length > 0 ? list : [safeUser];
     }, [onlineUsers, safeUser]);
+
+    if (!item) return null;
 
     const cleanName = item.name ? item.name.replace(/^[\d.]+\/[\d.]+\s/, '') : 'Item';
     const totalDisplayPrice = item.original_price ? Number(item.original_price) : (Number(item.price) || 0);

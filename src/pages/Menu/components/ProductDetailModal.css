@@ -1,0 +1,308 @@
+/* ==========================================================================
+   ProductDetailModal.css — Modal Premium de Detalhes do Produto (B2C)
+   Focado, isolado e seguindo as diretrizes do Consagrado Design System
+   ========================================================================== */
+
+.product-detail-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(4, 5, 8, 0.78);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 9999;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+    animation: pDetailFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes pDetailFadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.product-detail-sheet {
+    width: 100%;
+    max-width: 480px;
+    background: #14151a;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-left: 1px solid rgba(255, 255, 255, 0.08);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 28px 28px 0 0;
+    box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.65);
+    position: relative;
+    overflow: hidden;
+    animation: pDetailSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes pDetailSlideUp {
+    from {
+        transform: translateY(100%);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+/* --------------------------------------------------------------------------
+   1. Hero Image Grandona (Top Cover)
+   -------------------------------------------------------------------------- */
+.product-detail-hero-wrap {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    background: linear-gradient(180deg, #1f2129 0%, #14151a 100%);
+    overflow: hidden;
+}
+
+.product-detail-hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.product-detail-hero-gradient {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+        180deg,
+        rgba(20, 21, 26, 0.15) 0%,
+        rgba(20, 21, 26, 0.4) 50%,
+        #14151a 100%
+    );
+    pointer-events: none;
+}
+
+.product-detail-hero-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: #818cf8;
+    background: 
+        radial-gradient(circle at 50% 40%, rgba(129, 140, 248, 0.18) 0%, transparent 70%),
+        #181920;
+}
+
+.product-detail-hero-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #a1a1aa;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* Botão Fechar Flutuante */
+.product-detail-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(15, 16, 22, 0.72);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+    transition: transform 0.15s ease, background-color 0.2s ease;
+}
+
+.product-detail-close-btn:hover {
+    background: rgba(255, 255, 255, 0.16);
+    transform: scale(1.06);
+}
+
+.product-detail-close-btn:active {
+    transform: scale(0.94);
+}
+
+/* --------------------------------------------------------------------------
+   2. Corpo de Conteúdo & Ficha do Item
+   -------------------------------------------------------------------------- */
+.product-detail-body {
+    padding: 1.25rem 1.4rem 1.5rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.product-detail-featured-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.65rem;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    border-radius: 999px;
+    color: #f59e0b;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    width: fit-content;
+}
+
+.product-detail-title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: #ffffff;
+    line-height: 1.2;
+    margin: 0;
+}
+
+.product-detail-description {
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: #a1a1aa;
+    margin: 0;
+}
+
+.product-detail-meta-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-top: 0.25rem;
+}
+
+.product-detail-price {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #818cf8; /* Roxo oficial do preço */
+    letter-spacing: -0.01em;
+}
+
+.product-detail-category-badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #71717a;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 3px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* --------------------------------------------------------------------------
+   3. Barra de Ações (Stepper + Botão Componente Oficial)
+   -------------------------------------------------------------------------- */
+.product-detail-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Stepper [- 1 +] */
+.product-detail-stepper {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 110px;
+    height: 52px;
+    background: #20222a;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 0 0.5rem;
+    flex-shrink: 0;
+}
+
+.product-detail-stepper-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border: none;
+    color: #ffffff;
+    font-size: 1.15rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.product-detail-stepper-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.product-detail-stepper-btn:active {
+    transform: scale(0.92);
+}
+
+.product-detail-stepper-val {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #ffffff;
+    min-width: 22px;
+    text-align: center;
+}
+
+/* Botão Oficial Componente Consagrado (#4f46e5) */
+.product-detail-confirm-btn {
+    flex: 1;
+    height: 52px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.25rem;
+    cursor: pointer;
+    box-shadow: 0 8px 24px -4px rgba(79, 70, 229, 0.45);
+    transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.15s ease;
+}
+
+.product-detail-confirm-btn:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 10px 28px -4px rgba(79, 70, 229, 0.55);
+}
+
+.product-detail-confirm-btn:active {
+    transform: scale(0.98);
+}
+
+.product-detail-confirm-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.product-detail-confirm-total {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #ffffff;
+    letter-spacing: -0.01em;
+}
+
+.product-detail-out-stock-box {
+    text-align: center;
+    padding: 1.25rem;
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 16px;
+    color: #fca5a5;
+    font-size: 0.9rem;
+    font-weight: 700;
+}

@@ -5,20 +5,17 @@ const SplitStatusModal = ({ status, responderName, onCancel, onContinueAlone }) 
     if (status === 'idle') return null;
 
     return (
-        <div style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem'
-        }}>
-            <div className="card" style={{ width: '100%', textAlign: 'center', padding: '2rem' }}>
+        <div className="menu-modal-overlay">
+            <div className="menu-status-modal-card">
                 {status === 'waiting' && (
                     <>
-                        <div className="spinner" style={{ margin: '0 auto 1rem auto' }}></div>
+                        <div className="spinner menu-status-icon" />
                         <h3>Aguardando confirmação...</h3>
-                        <p style={{ color: 'var(--text-secondary)' }}>Esperando os outros aceitarem.</p>
+                        <p className="menu-status-subtext">Esperando os outros aceitarem.</p>
                         <button
+                            type="button"
                             onClick={onCancel}
-                            className="btn btn-secondary"
-                            style={{ marginTop: '1rem', width: '100%' }}
+                            className="btn btn-secondary menu-status-btn-full"
                         >
                             Cancelar
                         </button>
@@ -26,30 +23,30 @@ const SplitStatusModal = ({ status, responderName, onCancel, onContinueAlone }) 
                 )}
                 {status === 'accepted' && (
                     <>
-                        <CheckCircle size={48} color="var(--primary)" style={{ margin: '0 auto 1rem auto' }} />
+                        <CheckCircle size={48} className="menu-status-icon menu-status-Icon--success" />
                         <h3>Confirmado!</h3>
                         <p>{responderName} aceitou dividir.</p>
-                        <p style={{ fontSize: '0.8rem', opacity: 0.7 }}>Enviando pedido...</p>
+                        <p className="menu-status-micro">Enviando pedido...</p>
                     </>
                 )}
                 {status === 'rejected' && (
                     <>
-                        <UtensilsCrossed size={48} color="#ef4444" style={{ margin: '0 auto 1rem auto' }} />
+                        <UtensilsCrossed size={48} className="menu-status-icon menu-status-Icon--danger" />
                         <h3>Recusado</h3>
                         <p>{responderName} preferiu não dividir.</p>
-                        <p style={{ margin: '1rem 0', fontWeight: 'bold' }}>Deseja continuar sozinho?</p>
-                        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                        <p className="menu-status-question">Deseja continuar sozinho?</p>
+                        <div className="menu-status-actions">
                             <button
+                                type="button"
                                 onClick={onCancel}
-                                className="btn btn-secondary"
-                                style={{ flex: 1 }}
+                                className="btn btn-secondary menu-status-btn"
                             >
                                 Cancelar
                             </button>
                             <button
+                                type="button"
                                 onClick={onContinueAlone}
-                                className="btn btn-primary"
-                                style={{ flex: 1 }}
+                                className="btn btn-primary menu-status-btn"
                             >
                                 Continuar
                             </button>

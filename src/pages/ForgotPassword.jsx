@@ -1,10 +1,14 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import AppHeader from '../components/ui/AppHeader';
+import { Input, Button } from '../components/ui';
+import { maskCPF } from '../utils/masks';
 
 const ForgotPassword = () => {
     const navigate = useNavigate();
     const [method, setMethod] = useState('email'); // email or cpf
+    const [emailValue, setEmailValue] = useState('');
+    const [cpfValue, setCpfValue] = useState('');
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -14,12 +18,7 @@ const ForgotPassword = () => {
 
     return (
         <div className="container">
-            <header style={{ padding: '1rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <button onClick={() => navigate(-1)} className="btn-ghost" style={{ width: 'auto', padding: 0 }}>
-                    <ArrowLeft />
-                </button>
-                <h2>Recuperar Senha</h2>
-            </header>
+            <AppHeader title="Recuperar Senha" />
 
             <div style={{ marginTop: '2rem' }}>
                 <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
@@ -27,36 +26,51 @@ const ForgotPassword = () => {
                 </p>
 
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-                    <button
-                        className={`btn ${method === 'email' ? 'btn-primary' : 'btn-outline'}`}
+                    <Button
+                        type="button"
+                        variant={method === 'email' ? 'primary' : 'outline'}
+                        fullWidth
                         onClick={() => setMethod('email')}
                     >
                         E-mail
-                    </button>
-                    <button
-                        className={`btn ${method === 'cpf' ? 'btn-primary' : 'btn-outline'}`}
+                    </Button>
+                    <Button
+                        type="button"
+                        variant={method === 'cpf' ? 'primary' : 'outline'}
+                        fullWidth
                         onClick={() => setMethod('cpf')}
                     >
                         CPF
-                    </button>
+                    </Button>
                 </div>
 
                 <form onSubmit={handleSubmit}>
                     {method === 'email' ? (
-                        <div style={{ marginBottom: '2rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>E-mail cadastrado</label>
-                            <input type="email" className="input-field" placeholder="seu@email.com" required />
-                        </div>
+                        <Input
+                            id="recover-email"
+                            label="E-mail cadastrado"
+                            type="email"
+                            placeholder="seu@email.com"
+                            value={emailValue}
+                            onChange={(e) => setEmailValue(e.target.value)}
+                            required
+                        />
                     ) : (
-                        <div style={{ marginBottom: '2rem' }}>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>CPF cadastrado</label>
-                            <input type="text" className="input-field" placeholder="000.000.000-00" required />
-                        </div>
+                        <Input
+                            id="recover-cpf"
+                            label="CPF cadastrado"
+                            type="text"
+                            placeholder="000.000.000-00"
+                            value={cpfValue}
+                            onChange={(e) => setCpfValue(maskCPF(e.target.value))}
+                            maxLength={14}
+                            required
+                        />
                     )}
 
-                    <button type="submit" className="btn btn-primary">
+                    <Button type="submit" variant="primary" fullWidth style={{ marginTop: '1rem' }}>
                         Enviar Link
-                    </button>
+                    </Button>
                 </form>
             </div>
         </div>
