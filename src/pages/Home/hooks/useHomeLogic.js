@@ -102,6 +102,7 @@ export const useHomeLogic = () => {
     const [showUsersModal, setShowUsersModal] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [selectedQuickProduct, setSelectedQuickProduct] = useState(null);
+    const [splittingProduct, setSplittingProduct] = useState(null);
     const [cartCount, setCartCount] = useState(() => computeSharedCartCount());
 
     // Business State
@@ -310,6 +311,68 @@ export const useHomeLogic = () => {
 
     const userFirstName = user?.name?.split(' ')[0] || 'Victor';
 
+    const handleSplitHomeConfirm = useCallback(
+        async (item, selectedUserIds) => {
+            if (!selectedUserIds || selectedUserIds.length === 0 || !tableId) return;
+            setSplittingProduct(null);
+
+            const totalParts = selectedUserIds.length;
+            const isActuallySplit = totalParts > 1;
+            const batchId = crypto.randomUUID();
+            const realPrice = Number(item.price) || 0;
+            const splitPrice = isActuallySplit ? realPrice / totalParts : realPrice;
+            const currentUserId = user?.id || 'guest';
+            const others = selectedUserIds.filter((uid) => uid !== currentUserId);
+
+            try {
+                if (others.length > 0) {
+                    for (const uid of others) {
+                        await api.requestOrderShare?.(
+                            {
+                                name: item.name,
+                                price: realPrice,
+                                quantity: item.quantity || 1,
+                                productId: item.id,
+                                totalParts,
+                                tableId,
+                                requesterId: currentUserId,
+                                batchId
+                            },
+                            uid,
+                            user?.name || 'Alguém',
+                            currentUserId
+                        );
+                    }
+                }
+
+                await api.addOrder(tableId, {
+                    productId: item.id,
+                    name: item.name,
+                    price: splitPrice,
+                    quantity: item.quantity || 1,
+                    orderedBy: currentUserId,
+                    isSplit: isActuallySplit,
+                    splitParts: isActuallySplit ? totalParts : 1,
+                    originalPrice: isActuallySplit ? realPrice : null,
+                    splitRequester: isActuallySplit ? currentUserId : null,
+                    splitParticipants: isActuallySplit ? selectedUserIds : null,
+                    batchId
+                });
+
+                addToast(
+                    isActuallySplit
+                        ? 'Pedido dividido com a mesa enviado! 🍻'
+                        : 'Pedido enviado para a comanda! 👨‍🍳',
+                    'success'
+                );
+            } catch (err) {
+                console.error('Erro ao dividir pedido na home:', err);
+                addToast('Erro ao processar divisão do pedido.', 'error');
+            }
+        },
+        [tableId, user, addToast]
+    );
+
     const confirmLogout = async () => {
         setShowLogoutConfirm(false);
         await logout();
@@ -343,6 +406,9 @@ export const useHomeLogic = () => {
         setUsualProducts,
         selectedQuickProduct,
         setSelectedQuickProduct,
+        splittingProduct,
+        setSplittingProduct,
+        handleSplitHomeConfirm,
         cartCount,
         handleAddToCart
     };

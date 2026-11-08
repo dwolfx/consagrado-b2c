@@ -1,6 +1,6 @@
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Receipt } from 'lucide-react';
 
-const OrderStatusDock = ({ statusBadge, onNavigateTab, onNavigatePayment }) => {
+const OrderStatusDock = ({ statusBadge, onNavigateTab }) => {
     const statusText = statusBadge?.label || 'Em preparo';
     const variant = statusBadge?.variant || 'preparing';
 
@@ -20,7 +20,7 @@ const OrderStatusDock = ({ statusBadge, onNavigateTab, onNavigatePayment }) => {
 
     return (
         <div className="home-bottom-dock-fixed">
-            <footer className="home-bottom-dock" aria-label="Status do pedido e fechamento da conta">
+            <footer className="home-bottom-dock" aria-label="Status do pedido e minha comanda">
                 <div
                     className="home-dock-status"
                     role="button"
@@ -41,11 +41,12 @@ const OrderStatusDock = ({ statusBadge, onNavigateTab, onNavigatePayment }) => {
                 <button
                     type="button"
                     className="home-btn-close-bill"
-                    onClick={onNavigatePayment}
-                    aria-label="Ir para fechamento da conta"
+                    onClick={onNavigateTab}
+                    aria-label="Ir para minha comanda"
                 >
-                    <span>Fechar a conta</span>
-                    <ChevronRight size={16} strokeWidth={2.5} />
+                    <Receipt size={16} strokeWidth={2.2} />
+                    <span>Minha comanda</span>
+                    <ChevronRight size={15} strokeWidth={2.5} />
                 </button>
             </footer>
         </div>

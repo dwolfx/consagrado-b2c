@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TableUsersModal from '../../components/TableUsersModal';
+import SplitItemModal from '../../components/SplitItemModal';
 import { useHomeLogic } from './hooks/useHomeLogic';
 import HomeHeader from './components/HomeHeader';
 import TableHeroCard from './components/TableHeroCard';
@@ -43,6 +44,9 @@ const Home = () => {
         usualProducts,
         selectedQuickProduct,
         setSelectedQuickProduct,
+        splittingProduct,
+        setSplittingProduct,
+        handleSplitHomeConfirm,
         cartCount,
         handleAddToCart
     } = useHomeLogic();
@@ -65,6 +69,7 @@ const Home = () => {
                         <TableHeroCard
                             establishment={establishment}
                             table={table}
+                            currentUser={user}
                             onlineUsers={onlineUsers}
                             onOpenUsersModal={() => setShowUsersModal(true)}
                         />
@@ -92,7 +97,6 @@ const Home = () => {
                         <OrderStatusDock
                             statusBadge={statusBadge}
                             onNavigateTab={() => navigate('/tab')}
-                            onNavigatePayment={() => navigate('/payment')}
                         />
                     </>
                 ) : (
@@ -114,6 +118,26 @@ const Home = () => {
                     product={selectedQuickProduct}
                     onClose={() => setSelectedQuickProduct(null)}
                     onAddToCart={handleAddToCart}
+                    onSplit={(prod, qty) => {
+                        setSelectedQuickProduct(null);
+                        setSplittingProduct({
+                            ...prod,
+                            quantity: qty,
+                            price: (Number(prod.price) || 0) * qty,
+                            original_price: (Number(prod.price) || 0) * qty
+                        });
+                    }}
+                />
+            )}
+
+            {splittingProduct && (
+                <SplitItemModal
+                    item={splittingProduct}
+                    currentUser={user || { id: 'guest', name: 'Você' }}
+                    onlineUsers={onlineUsers}
+                    onClose={() => setSplittingProduct(null)}
+                    onConfirm={handleSplitHomeConfirm}
+                    confirmLabel="Confirmar Divisão e Pedir"
                 />
             )}
 

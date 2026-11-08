@@ -100,6 +100,23 @@ const Menu = () => {
                         cart.update(user?.id || 'guest', prod, qty);
                         addToast(`${qty}x ${prod.name} adicionado ao carrinho!`, 'success');
                     }}
+                    onSplit={(prod, qty) => {
+                        setSelectedDetailProduct(null);
+                        split.setSplittingItem({
+                            id: prod.id,
+                            name: prod.name,
+                            price: (Number(prod.price) || 0) * qty,
+                            quantity: qty,
+                            items: [
+                                {
+                                    productId: prod.id,
+                                    quantity: qty,
+                                    name: prod.name,
+                                    price: Number(prod.price) || 0
+                                }
+                            ]
+                        });
+                    }}
                 />
             )}
 

@@ -3,6 +3,7 @@ import {
     X,
     Sparkles,
     ShoppingBag,
+    Users,
     Beer,
     Wine,
     Pizza,
@@ -27,7 +28,7 @@ const resolveHeroIcon = (category = '') => {
 const formatCurrency = (value) =>
     Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const ProductDetailModal = ({ product, onClose, onAddToCart }) => {
+const ProductDetailModal = ({ product, onClose, onAddToCart, onSplit }) => {
     const [quantity, setQuantity] = useState(1);
     const [imgError, setImgError] = useState(false);
 
@@ -96,7 +97,8 @@ const ProductDetailModal = ({ product, onClose, onAddToCart }) => {
                     <h3 className="product-detail-title">{product.name}</h3>
 
                     <p className="product-detail-description">
-                        {product.description || 'Especialidade da casa servida no capricho e na temperatura perfeita.'}
+                        {product.description ||
+                            'Especialidade da casa servida no capricho e na temperatura perfeita.'}
                     </p>
 
                     <div className="product-detail-meta-row">
@@ -110,43 +112,60 @@ const ProductDetailModal = ({ product, onClose, onAddToCart }) => {
                         )}
                     </div>
 
-                    {/* Ações: Stepper + Botão Oficial Consagrado */}
+                    {/* Ações: Stepper + Botões Adicionar / Dividir */}
                     {!isOutOfStock ? (
-                        <div className="product-detail-actions">
-                            <div className="product-detail-stepper" aria-label="Seletor de Quantidade">
+                        <div className="product-detail-actions-group">
+                            <div className="product-detail-actions">
+                                <div className="product-detail-stepper" aria-label="Seletor de Quantidade">
+                                    <button
+                                        type="button"
+                                        className="product-detail-stepper-btn"
+                                        onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                                        aria-label="Diminuir quantidade"
+                                    >
+                                        −
+                                    </button>
+                                    <span className="product-detail-stepper-val">{quantity}</span>
+                                    <button
+                                        type="button"
+                                        className="product-detail-stepper-btn"
+                                        onClick={() => setQuantity((q) => q + 1)}
+                                        aria-label="Aumentar quantidade"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+
                                 <button
                                     type="button"
-                                    className="product-detail-stepper-btn"
-                                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                                    aria-label="Diminuir quantidade"
+                                    className="product-detail-confirm-btn"
+                                    onClick={handleConfirm}
+                                    aria-label={`Adicionar ${quantity} ${product.name} ao carrinho`}
                                 >
-                                    −
-                                </button>
-                                <span className="product-detail-stepper-val">{quantity}</span>
-                                <button
-                                    type="button"
-                                    className="product-detail-stepper-btn"
-                                    onClick={() => setQuantity((q) => q + 1)}
-                                    aria-label="Aumentar quantidade"
-                                >
-                                    +
+                                    <span className="product-detail-confirm-label">
+                                        <ShoppingBag size={18} />
+                                        <span>Adicionar</span>
+                                    </span>
+                                    <span className="product-detail-confirm-total">
+                                        {formatCurrency(totalPrice)}
+                                    </span>
                                 </button>
                             </div>
 
-                            <button
-                                type="button"
-                                className="product-detail-confirm-btn"
-                                onClick={handleConfirm}
-                                aria-label={`Adicionar ${quantity} ${product.name} ao carrinho`}
-                            >
-                                <span className="product-detail-confirm-label">
-                                    <ShoppingBag size={18} />
-                                    <span>Adicionar</span>
-                                </span>
-                                <span className="product-detail-confirm-total">
-                                    {formatCurrency(totalPrice)}
-                                </span>
-                            </button>
+                            {onSplit && (
+                                <button
+                                    type="button"
+                                    className="product-detail-split-btn"
+                                    onClick={() => {
+                                        onSplit(product, quantity);
+                                        onClose?.();
+                                    }}
+                                    aria-label="Dividir este item com a mesa"
+                                >
+                                    <Users size={18} />
+                                    <span>Dividir com a mesa</span>
+                                </button>
+                            )}
                         </div>
                     ) : (
                         <div className="product-detail-out-stock-box">

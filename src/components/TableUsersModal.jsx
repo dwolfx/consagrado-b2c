@@ -1,152 +1,233 @@
 import React, { useState } from 'react';
-import { X, Users, ArrowLeft } from 'lucide-react';
+import { X, Users, ArrowLeft, Phone, Shield, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import TableUsersList from './TableUsers/TableUsersList';
-import TableUserDetail from './TableUsers/TableUserDetail';
+import { formatPhoneNumber } from 'react-phone-number-input';
+import './TableUsersModal.css';
+
+export const isGuestUser = (u) => {
+    if (!u) return false;
+    return Boolean(
+        u.is_guest ||
+        (typeof u.id === 'string' && u.id.startsWith('guest')) ||
+        (typeof u.email === 'string' && u.email.toLowerCase().includes('convidado'))
+    );
+};
 
 const TableUsersModal = ({ users = [], onClose }) => {
     const { user: currentUser } = useAuth();
     const [selectedUser, setSelectedUser] = useState(null);
 
+    const handleUserClick = (u) => {
+        setSelectedUser(u);
+    };
+
+    const handleBack = () => {
+        setSelectedUser(null);
+    };
+
     return (
-        <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="A Mesa"
-            style={{
-                position: 'fixed',
-                inset: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                backdropFilter: 'blur(8px)',
-                zIndex: 9999,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '1.5rem',
-                animation: 'fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
-            }}
-            onClick={onClose}
-        >
-            <div
-                style={{
-                    backgroundColor: '#18181b',
-                    borderRadius: '24px',
-                    width: '100%',
-                    maxWidth: '380px',
-                    minHeight: '400px',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    overflow: 'hidden',
-                    animation: 'scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
-                    position: 'relative',
-                    display: 'flex',
-                    flexDirection: 'column'
-                }}
-                onClick={(e) => e.stopPropagation()}
-            >
+        <div className="table-users-overlay" onClick={onClose}>
+            <div className="table-users-modal" onClick={(e) => e.stopPropagation()}>
                 {/* Decorative Background Glow */}
-                <div style={{
-                    position: 'absolute', top: '-50%', left: '50%', transform: 'translate(-50%, 0)',
-                    width: '300px', height: '300px', background: 'var(--brand-color)', opacity: 0.15,
-                    filter: 'blur(60px)', borderRadius: '50%', pointerEvents: 'none', zIndex: 0
-                }} />
+                <div className="table-users-glow" />
 
                 {/* Header */}
-                <div style={{
-                    padding: '1.5rem 1.5rem 1rem',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    position: 'relative',
-                    zIndex: 1
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div className="table-users-header">
+                    <div className="table-users-header-info">
                         {selectedUser ? (
                             <button
                                 type="button"
-                                onClick={() => setSelectedUser(null)}
-                                aria-label="Voltar para lista de usuários"
-                                style={{
-                                    background: 'rgba(255,255,255,0.05)', borderRadius: '12px',
-                                    border: 'none', color: '#fff', padding: '10px',
-                                    display: 'flex', cursor: 'pointer'
-                                }}
+                                onClick={handleBack}
+                                className="table-users-back-btn"
+                                aria-label="Voltar para a lista da mesa"
                             >
                                 <ArrowLeft size={20} />
                             </button>
                         ) : (
-                            <div style={{
-                                padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            }}>
-                                <Users size={20} color="var(--brand-color)" />
+                            <div className="table-users-icon-wrap">
+                                <Users size={20} />
                             </div>
                         )}
 
                         <div>
-                            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700, color: '#fff' }}>
+                            <h3 className="table-users-title">
                                 {selectedUser ? 'Detalhes' : 'A Mesa'}
                             </h3>
                             {!selectedUser && (
-                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>
+                                <p className="table-users-subtitle">
                                     {users.length} {users.length === 1 ? 'pessoa' : 'pessoas'} conectad{users.length === 1 ? 'a' : 'as'}
                                 </p>
                             )}
                         </div>
                     </div>
+
                     <button
                         type="button"
                         onClick={onClose}
+                        className="table-users-close-btn"
                         aria-label="Fechar modal"
-                        style={{
-                            background: 'rgba(255,255,255,0.1)',
-                            border: 'none',
-                            color: '#fff',
-                            width: '32px', height: '32px', borderRadius: '50%',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer'
-                        }}
                     >
                         <X size={18} />
                     </button>
                 </div>
 
                 {/* Content Area */}
-                <div style={{
-                    padding: '0 1rem 1.5rem',
-                    flex: 1,
-                    overflowY: 'auto',
-                    position: 'relative',
-                    zIndex: 1
-                }}>
+                <div className="table-users-content">
                     {!selectedUser ? (
-                        <TableUsersList
-                            users={users}
-                            currentUser={currentUser}
-                            onSelectUser={(u) => setSelectedUser(u)}
-                        />
+                        /* LIST VIEW */
+                        <div className="table-users-list">
+                            {users.map((u, i) => {
+                                const isMe = u.id === currentUser?.id;
+                                const isGuest = isGuestUser(u);
+                                const rowClass = `table-user-row ${isMe ? 'table-user-row--me' : ''}`;
+                                const avatarImgClass = `table-user-avatar-img ${
+                                    isMe
+                                        ? 'table-user-avatar-img--me'
+                                        : isGuest
+                                          ? 'table-user-avatar-img--guest'
+                                          : ''
+                                }`;
+
+                                return (
+                                    <div
+                                        key={u.id || i}
+                                        onClick={() => handleUserClick(u)}
+                                        className={rowClass}
+                                        style={{ animationDelay: `${i * 0.04}s` }}
+                                        role="button"
+                                        tabIndex={0}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') handleUserClick(u);
+                                        }}
+                                    >
+                                        <div className="table-user-avatar-wrap">
+                                            <img
+                                                src={
+                                                    u.avatar_url ||
+                                                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                                        u.name || 'U'
+                                                    )}&background=random`
+                                                }
+                                                alt={u.name || 'Usuário'}
+                                                className={avatarImgClass}
+                                            />
+                                            <div className="table-user-online-dot" />
+                                        </div>
+
+                                        <div className="table-user-meta">
+                                            <div className="table-user-name-line">
+                                                <span className="table-user-name-text">
+                                                    {u.name || 'Convidado'}
+                                                </span>
+                                                {isMe && (
+                                                    <span className="table-user-badge-me">VOCÊ</span>
+                                                )}
+                                                {isGuest && (
+                                                    <span className="table-user-badge-guest">
+                                                        ⚡ Convidado
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="table-user-sub-action">
+                                                {isGuest ? 'Entrou como convidado' : 'Ver perfil'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     ) : (
-                        <TableUserDetail
-                            user={selectedUser}
-                            currentUser={currentUser}
-                        />
+                        /* DETAIL VIEW */
+                        <div className="table-user-detail-view">
+                            {(() => {
+                                const isMe = selectedUser.id === currentUser?.id;
+                                const isGuest = isGuestUser(selectedUser);
+                                const effectivePhone = isMe
+                                    ? currentUser?.phone || selectedUser.phone
+                                    : selectedUser.phone;
+                                const effectiveSettings = isMe
+                                    ? currentUser?.settings || selectedUser.settings
+                                    : selectedUser.settings;
+                                const isPrivate = Boolean(effectiveSettings?.privacy_phone);
+                                const canShowPhone = isMe || !isPrivate;
+
+                                const detailAvatarClass = `table-user-detail-avatar ${
+                                    isGuest ? 'table-user-detail-avatar--guest' : ''
+                                }`;
+
+                                return (
+                                    <>
+                                        <img
+                                            src={
+                                                selectedUser.avatar_url ||
+                                                `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                                    selectedUser.name || 'U'
+                                                )}&background=random`
+                                            }
+                                            alt={selectedUser.name || 'Perfil'}
+                                            className={detailAvatarClass}
+                                        />
+
+                                        <h2 className="table-user-detail-name">
+                                            {selectedUser.name || 'Convidado'}
+                                        </h2>
+
+                                        <p className="table-user-detail-sub">
+                                            {isGuest
+                                                ? 'Acesso Convidado na Mesa'
+                                                : selectedUser.email || 'Cliente Consagrado'}
+                                        </p>
+
+                                        <div className="table-user-detail-cards">
+                                            {isGuest ? (
+                                                <div className="table-user-card table-user-card--guest">
+                                                    <Sparkles size={20} className="table-user-card-icon" />
+                                                    <div>
+                                                        <div className="table-user-card-label">Modo Convidado</div>
+                                                        <div className="table-user-card-value">
+                                                            Entrou via QR Code sem cadastro de telefone
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : canShowPhone && effectivePhone ? (
+                                                <div className="table-user-card">
+                                                    <Phone size={20} className="table-user-card-icon" />
+                                                    <div>
+                                                        <div className="table-user-card-label">Celular</div>
+                                                        <div className="table-user-card-value">
+                                                            {formatPhoneNumber(effectivePhone) || effectivePhone}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : isPrivate && !isMe ? (
+                                                <div className="table-user-card table-user-card--private">
+                                                    <Shield size={20} className="table-user-card-icon--muted" />
+                                                    <div>
+                                                        <div className="table-user-card-label">Privacidade</div>
+                                                        <div className="table-user-card-value--muted">
+                                                            Contato Privado
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="table-user-card table-user-card--private">
+                                                    <Phone size={20} className="table-user-card-icon--muted" />
+                                                    <div>
+                                                        <div className="table-user-card-label">Celular</div>
+                                                        <div className="table-user-card-value--muted">
+                                                            Telefone não informado
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </div>
                     )}
                 </div>
             </div>
-            <style>{`
-                @keyframes fadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-                @keyframes scaleUp {
-                    from { transform: scale(0.9) translateY(10px); opacity: 0; }
-                    to { transform: scale(1) translateY(0); opacity: 1; }
-                }
-                @keyframes slideIn {
-                    from { transform: translateX(-10px); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-            `}</style>
         </div>
     );
 };

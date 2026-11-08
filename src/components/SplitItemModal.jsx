@@ -1,66 +1,85 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { X, Check } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { X, Check, Users } from 'lucide-react';
+import { isGuestUser } from './TableUsersModal';
+import './SplitItemModal.css';
 
 const SplitItemModal = ({
     item,
     currentUser,
-    onlineUsers,
+    onlineUsers = [],
     onClose,
     onConfirm,
-    initialSelectedUsers = [],
+    initialSelectedUsers,
     disabledUsers = [],
     confirmLabel = 'Dividir Item'
 }) => {
-    const safeUser = useMemo(() => currentUser || { id: 'guest', name: 'Você' }, [currentUser]);
+    const safeUser = currentUser || { id: 'guest', name: 'Você' };
     const normalize = (id) => String(id || '').toLowerCase();
 
-    const initialUsersKey = useMemo(() => {
-        return (initialSelectedUsers || []).map(normalize).sort().join(',');
-    }, [initialSelectedUsers]);
-
-    // Initial selection logic (default to self if empty)
-    const [selectedUsers, setSelectedUsers] = useState(() => {
-        if (initialSelectedUsers && initialSelectedUsers.length > 0) {
-            return initialSelectedUsers.map(normalize);
-        }
-        return [normalize(safeUser.id)];
-    });
-
-    useEffect(() => {
-        if (initialUsersKey) {
-            setSelectedUsers(initialUsersKey.split(',').filter(Boolean));
-        } else {
-            setSelectedUsers([normalize(safeUser.id)]);
-        }
-    }, [initialUsersKey, safeUser.id]);
-
-    // Ensure safeUser is in safeOnlineUsers so there is never an empty state
+    // Ensure safeUser is present so there is never an empty user list
     const safeOnlineUsers = useMemo(() => {
         const list = Array.isArray(onlineUsers) ? [...onlineUsers] : [];
-        const hasSelf = list.some(u => normalize(u?.id) === normalize(safeUser?.id));
+        const hasSelf = list.some((u) => normalize(u?.id) === normalize(safeUser?.id));
         if (!hasSelf && safeUser?.id) {
             list.unshift(safeUser);
         }
         return list.length > 0 ? list : [safeUser];
     }, [onlineUsers, safeUser]);
 
+    // Initial selection logic (default to self if empty)
+    const [selectedUsers, setSelectedUsers] = useState(() => {
+        if (Array.isArray(initialSelectedUsers) && initialSelectedUsers.length > 0) {
+            return initialSelectedUsers.map(normalize);
+        }
+        return [normalize(safeUser.id)];
+    });
+
+    // Guard against re-renders resetting user's manual selection unless item ID actually changes
+    const prevItemIdRef = useRef(item?.id);
+    useEffect(() => {
+        if (item?.id !== prevItemIdRef.current) {
+            prevItemIdRef.current = item?.id;
+            if (Array.isArray(initialSelectedUsers) && initialSelectedUsers.length > 0) {
+                setSelectedUsers(initialSelectedUsers.map(normalize));
+            } else {
+                setSelectedUsers([normalize(safeUser.id)]);
+            }
+        }
+    }, [item?.id, initialSelectedUsers, safeUser.id]);
+
     if (!item) return null;
 
-    const cleanName = item.name ? item.name.replace(/^[\d.]+\/[\d.]+\s/, '') : 'Item';
-    const totalDisplayPrice = item.original_price ? Number(item.original_price) : (Number(item.price) || 0);
+    const isGroup = Array.isArray(item._groupItems) && item._groupItems.length > 1;
+    const cleanName = isGroup
+        ? `${item._groupItems.length} itens do pedido`
+        : item.name
+          ? item.name.replace(/^[\d.]+\/[\d.]+\s/, '')
+          : 'Item';
+
+    const totalDisplayPrice = isGroup
+        ? item._groupItems.reduce(
+              (acc, it) =>
+                  acc +
+                  (it.original_price ? Number(it.original_price) : Number(it.price) || 0) *
+                      (it.quantity || 1),
+              0
+          )
+        : item.original_price
+          ? Number(item.original_price)
+          : Number(item.price) || 0;
 
     const toggleUser = (userId) => {
         const uid = normalize(userId);
-        setSelectedUsers(prev => {
+        setSelectedUsers((prev) => {
             if (prev.includes(uid)) {
-                return prev.filter(id => id !== uid);
+                return prev.filter((id) => id !== uid);
             }
             return [...prev, uid];
         });
     };
 
     const selectAll = () => {
-        const allIds = safeOnlineUsers.map(u => normalize(u?.id)).filter(Boolean);
+        const allIds = safeOnlineUsers.map((u) => normalize(u?.id)).filter(Boolean);
         setSelectedUsers(allIds);
     };
 
@@ -69,112 +88,142 @@ const SplitItemModal = ({
         onConfirm(item, selectedUsers);
     };
 
+    const splitPrice = totalDisplayPrice / (selectedUsers.length || 1);
+
     return (
-        <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0,0,0,0.7)', zIndex: 9999,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: '1rem',
-            animation: 'fadeIn 0.2s'
-        }}>
-            <div className="card" style={{
-                width: '100%', maxWidth: '350px', background: 'var(--bg-secondary)',
-                border: '1px solid var(--bg-tertiary)', padding: '1.5rem',
-                flexDirection: 'column', gap: '1rem',
-                animation: 'scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                margin: 0
-            }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <h3 style={{ fontSize: '1.2rem', margin: 0 }}>Dividir com quem?</h3>
-                    <button onClick={onClose} className="btn-ghost" style={{ padding: '8px' }}>
-                        <X size={20} />
+        <div className="split-item-overlay" onClick={onClose}>
+            <div className="split-item-card" onClick={(e) => e.stopPropagation()}>
+                {/* Header */}
+                <div className="split-item-header">
+                    <div className="split-item-title-group">
+                        <span className="split-item-badge-pill">
+                            <Users size={12} />
+                            <span>Dividir com a mesa</span>
+                        </span>
+                        <h3 className="split-item-title">{cleanName}</h3>
+                        <div className="split-item-total-note">
+                            Total:{' '}
+                            {totalDisplayPrice.toLocaleString('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL'
+                            })}
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="split-item-close-btn"
+                        aria-label="Fechar"
+                    >
+                        <X size={16} />
                     </button>
                 </div>
 
-                <div style={{ padding: '0.75rem', background: 'var(--bg-tertiary)', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 'bold' }}>{cleanName}</span>
-                    <span style={{ color: 'var(--primary)' }}>
-                        {totalDisplayPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                    </span>
+                {/* Seleção de pessoas */}
+                <div className="split-item-select-all-row">
+                    <span className="split-item-select-all-label">Quem vai rachar?</span>
+                    <button
+                        type="button"
+                        onClick={selectAll}
+                        className="split-item-select-all-btn"
+                    >
+                        Selecionar Todos
+                    </button>
                 </div>
 
-                <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Usuários na mesa</p>
-                        <button onClick={selectAll} style={{
-                            background: 'none', border: 'none', color: 'var(--primary)',
-                            fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer'
-                        }}>
-                            Todos
-                        </button>
-                    </div>
+                {/* Lista de usuários */}
+                <div className="split-item-users-list">
+                    {safeOnlineUsers.map((u) => {
+                        const uid = normalize(u.id);
+                        const isSelected = selectedUsers.includes(uid);
+                        const isMe = uid === normalize(safeUser.id);
+                        const isDisabled = disabledUsers.map(normalize).includes(uid);
+                        const isGuest = isGuestUser(u);
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(68px, 1fr))', gap: '0.75rem' }}>
-                        {safeOnlineUsers.map(u => {
-                            if (!u) return null;
-                            const uid = normalize(u.id);
-                            const isSelected = selectedUsers.includes(uid);
-                            const isSelf = uid === normalize(safeUser.id);
-                            const isDisabled = Array.isArray(disabledUsers) && disabledUsers.map(normalize).includes(uid) && !isSelf;
-                            const splitPrice = totalDisplayPrice / (selectedUsers.length || 1);
-                            const avatarUrl = u.avatar_url || u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name || 'User')}&background=random`;
-                            const displayName = isSelf ? 'Eu' : (u.name || 'Visitante').split(' ')[0];
+                        const rowClass = `split-user-row ${
+                            isSelected ? 'split-user-row--selected' : ''
+                        } ${isDisabled ? 'split-user-row--disabled' : ''}`;
 
-                            return (
-                                <div
-                                    key={u.id || Math.random()}
-                                    onClick={() => !isDisabled && u.id && toggleUser(u.id)}
-                                    style={{
-                                        cursor: isDisabled ? 'not-allowed' : 'pointer',
-                                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', position: 'relative',
-                                        opacity: isDisabled ? 0.4 : 1,
-                                        pointerEvents: isDisabled ? 'none' : 'auto'
-                                    }}
-                                >
-                                    <div style={{
-                                        width: '56px', height: '56px', borderRadius: '50%', overflow: 'hidden',
-                                        border: isSelected ? '3px solid var(--primary)' : '3px solid transparent',
-                                        opacity: isSelected ? 1 : 0.5,
-                                        transition: 'all 0.2s',
-                                        boxShadow: isSelected ? '0 4px 12px var(--primary-glow)' : 'none',
-                                        filter: isDisabled ? 'grayscale(100%)' : 'none'
-                                    }}>
-                                        <img src={avatarUrl} alt={u.name || 'User'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        const avatarClass = `split-user-avatar ${
+                            isSelected ? 'split-user-avatar--selected' : ''
+                        }`;
+
+                        const checkboxClass = `split-checkbox-box ${
+                            isSelected ? 'split-checkbox-box--selected' : ''
+                        }`;
+
+                        return (
+                            <div
+                                key={u.id}
+                                className={rowClass}
+                                onClick={() => !isDisabled && toggleUser(u.id)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                    if (!isDisabled && (e.key === 'Enter' || e.key === ' ')) {
+                                        toggleUser(u.id);
+                                    }
+                                }}
+                            >
+                                <div className="split-user-info">
+                                    <img
+                                        src={
+                                            u.avatar_url ||
+                                            `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                                u.name || 'U'
+                                            )}&background=random`
+                                        }
+                                        alt={u.name || 'Usuário'}
+                                        className={avatarClass}
+                                    />
+                                    <div className="split-user-name-line">
+                                        <span className="split-user-name">
+                                            {u.name || 'Convidado'}
+                                        </span>
+                                        {isMe && <span className="split-user-tag-me">VOCÊ</span>}
+                                        {isGuest && (
+                                            <span className="split-user-tag-guest">⚡ Convidado</span>
+                                        )}
                                     </div>
-                                    <span style={{ fontSize: '0.75rem', fontWeight: isSelected ? 'bold' : 'normal', textAlign: 'center', color: isSelected ? 'white' : 'var(--text-secondary)' }}>
-                                        {displayName}
-                                    </span>
-                                    {isSelected && !isDisabled && (
-                                        <div style={{
-                                            position: 'absolute', top: '-6px', right: '-6px',
-                                            background: '#22c55e', color: 'white',
-                                            fontSize: '0.65rem', fontWeight: 'bold',
-                                            padding: '2px 6px', borderRadius: '10px',
-                                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                                        }}>
-                                            {splitPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                                        </div>
-                                    )}
                                 </div>
-                            );
-                        })}
+
+                                <div className={checkboxClass}>
+                                    {isSelected && <Check size={14} strokeWidth={3} />}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Resumo da conta */}
+                <div className="split-summary-box">
+                    <div className="split-summary-left">
+                        <span className="split-summary-label">Sua parte</span>
+                        <span className="split-summary-count">
+                            dividido em {selectedUsers.length}{' '}
+                            {selectedUsers.length === 1 ? 'pessoa' : 'pessoas'}
+                        </span>
+                    </div>
+                    <div className="split-summary-right">
+                        <span className="split-summary-price">
+                            {splitPrice.toLocaleString('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL'
+                            })}
+                        </span>
                     </div>
                 </div>
 
+                {/* Ação de confirmação */}
                 <button
+                    type="button"
                     onClick={handleConfirm}
                     disabled={selectedUsers.length === 0}
-                    className="btn btn-primary"
-                    style={{ width: '100%', justifyContent: 'center', padding: '1rem', fontSize: '1.1rem', marginTop: '1rem' }}
+                    className="split-confirm-btn"
                 >
-                    {confirmLabel} <Check size={20} style={{ marginLeft: '8px' }} />
+                    {confirmLabel}
                 </button>
-
             </div>
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-                @keyframes scaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-            `}</style>
         </div>
     );
 };

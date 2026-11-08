@@ -227,12 +227,12 @@ export const TableProvider = ({ children }) => {
             }
 
             // B. Create Stub Objects for Guest Names
-            // B. Create Stub Objects for Guest Names
             names.forEach(n => {
                 const isMe = n === user?.id; // Check if this guest ID matches current user
                 foundUsers.push({
                     id: n,
                     name: n,
+                    is_guest: true,
                     avatar_url: (isMe && user?.avatar) ? user.avatar : `https://ui-avatars.com/api/?name=${n}&background=random`
                 });
             });
@@ -300,6 +300,9 @@ export const TableProvider = ({ children }) => {
                         id: user.id,
                         name: user.name || 'Visitante',
                         email: user.email,
+                        phone: user.phone || null,
+                        settings: user.settings || {},
+                        is_guest: Boolean(user.is_guest || user.id?.startsWith?.('guest')),
                         avatar_url: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'V')}&background=random`
                     });
                 }
@@ -308,7 +311,7 @@ export const TableProvider = ({ children }) => {
         return () => supabase.removeChannel(channel);
     }, [user?.id, tableId]);
 
-    // Re-track quando avatar ou nome mudam (sem recriar o canal)
+    // Re-track quando avatar, nome, telefone ou privacidade mudam (sem recriar o canal)
     useEffect(() => {
         if (!user?.id || !tableId) return;
 
@@ -321,9 +324,12 @@ export const TableProvider = ({ children }) => {
             id: user.id,
             name: user.name || 'Visitante',
             email: user.email,
+            phone: user.phone || null,
+            settings: user.settings || {},
+            is_guest: Boolean(user.is_guest || user.id?.startsWith?.('guest')),
             avatar_url: user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'V')}&background=random`
         });
-    }, [user?.name, user?.avatar]);
+    }, [user?.name, user?.avatar, user?.phone, user?.settings]);
 
     // --- 3. Canal de Presença Global do Estabelecimento ---
     // O B2B (tela Clientes) assina esse canal como observador para ver quem está na casa
