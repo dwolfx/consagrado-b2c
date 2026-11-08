@@ -12,6 +12,7 @@ const TabOrderList = ({
     currentUserId,
     showAll,
     setShowAll,
+    onSplitItem,
     onSplitGroup,
     onCancelPendingGroup,
     onlineUsers = [],
@@ -123,7 +124,7 @@ const TabOrderList = ({
                     group={openGroup}
                     isMine={myGroups.some(g => g.key === openGroup.key)}
                     onClose={() => setOpenGroup(null)}
-                    onSplit={onSplitGroup}
+                    onSplitItem={onSplitItem || onSplitGroup}
                     onlineUsers={onlineUsers}
                     knownUsers={knownUsers}
                     allOrders={allOrders}

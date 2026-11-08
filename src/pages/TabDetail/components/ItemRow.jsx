@@ -1,4 +1,5 @@
 import React from 'react';
+import { Scissors } from 'lucide-react';
 
 const formatPrice = (val) =>
     Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -25,7 +26,7 @@ export const getDisplayPrice = (item) => {
     return Number(item.price || 0);
 };
 
-const ItemRow = ({ item }) => {
+const ItemRow = ({ item, canSplit = false, onSplit = null }) => {
     const SPLIT_PREFIX = /^(\d+)\s*\/\s*(\d+)\s+(.*)/;
     const nameMatch = (item.name || '').match(SPLIT_PREFIX);
     const isSplitFlag = !!(item.is_split && item.split_parts > 1);
@@ -53,7 +54,7 @@ const ItemRow = ({ item }) => {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                padding: '0.45rem 0',
+                padding: '0.55rem 0',
                 borderBottom: '1px solid var(--bg-tertiary)'
             }}
         >
@@ -104,16 +105,44 @@ const ItemRow = ({ item }) => {
                     {cleanName}
                 </span>
             </div>
-            <span
-                style={{
-                    fontWeight: '700',
-                    fontSize: '0.88rem',
-                    flexShrink: 0,
-                    marginLeft: '8px'
-                }}
-            >
-                {formatPrice(getDisplayPrice(item) * item.quantity)}
-            </span>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0, marginLeft: '8px' }}>
+                <span
+                    style={{
+                        fontWeight: '700',
+                        fontSize: '0.88rem'
+                    }}
+                >
+                    {formatPrice(getDisplayPrice(item) * item.quantity)}
+                </span>
+
+                {canSplit && onSplit && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onSplit(item);
+                        }}
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            fontSize: '0.72rem',
+                            fontWeight: '600',
+                            color: isSplit ? '#a78bfa' : 'var(--text-secondary, #a1a1aa)',
+                            backgroundColor: isSplit ? 'rgba(167, 139, 250, 0.12)' : 'var(--bg-tertiary, #27272a)',
+                            border: isSplit ? '1px solid rgba(167, 139, 250, 0.3)' : '1px solid rgba(255, 255, 255, 0.08)',
+                            borderRadius: '6px',
+                            cursor: 'pointer'
+                        }}
+                        aria-label={isSplit ? `Editar divisão de ${cleanName}` : `Dividir ${cleanName}`}
+                    >
+                        <Scissors size={12} />
+                        <span>{isSplit ? 'Editar' : 'Dividir'}</span>
+                    </button>
+                )}
+            </div>
         </div>
     );
 };

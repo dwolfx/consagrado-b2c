@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Scissors } from 'lucide-react';
+import { X } from 'lucide-react';
 import ItemRow, { getDisplayPrice } from './ItemRow';
 import AvatarRow from './AvatarRow';
 import { getStatusConfig } from './OrderGroupCard';
@@ -10,6 +10,7 @@ const OrderGroupModal = ({
     group,
     isMine,
     onClose,
+    onSplitItem,
     onSplit,
     onlineUsers = [],
     knownUsers = [],
@@ -47,9 +48,10 @@ const OrderGroupModal = ({
 
     const canSplit = isMine && group.status !== 'paid';
 
-    const handleSplitClick = () => {
+    const handleSplitSingleItem = (itemToSplit) => {
         onClose();
-        if (onSplit) onSplit(group);
+        if (onSplitItem) onSplitItem(itemToSplit);
+        else if (onSplit) onSplit(itemToSplit);
     };
 
     return (
@@ -139,14 +141,19 @@ const OrderGroupModal = ({
                 <div style={{ padding: '0 1.5rem', overflowY: 'auto', flex: 1 }}>
                     <div style={{ borderTop: '1px solid var(--bg-tertiary)', borderBottom: '1px solid var(--bg-tertiary)' }}>
                         {group.items.map(item => (
-                            <ItemRow key={item.id} item={item} />
+                            <ItemRow
+                                key={item.id}
+                                item={item}
+                                canSplit={canSplit}
+                                onSplit={handleSplitSingleItem}
+                            />
                         ))}
                     </div>
                 </div>
 
-                {/* Footer do Modal: Total + Ação de Dividir */}
-                <div style={{ padding: '1rem 1.5rem', flexShrink: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: canSplit ? '0.75rem' : 0 }}>
+                {/* Footer do Modal: Total */}
+                <div style={{ padding: '1.2rem 1.5rem', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                             Total do Pedido
                         </span>
@@ -154,26 +161,6 @@ const OrderGroupModal = ({
                             {formatPrice(batchTotal)}
                         </span>
                     </div>
-
-                    {canSplit && (
-                        <button
-                            onClick={handleSplitClick}
-                            className="btn btn-secondary"
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px',
-                                padding: '0.75rem',
-                                borderRadius: '12px',
-                                fontWeight: '700'
-                            }}
-                        >
-                            <Scissors size={18} />
-                            {participantIds.length > 1 ? 'Editar Divisão deste Pedido' : 'Dividir este Pedido'}
-                        </button>
-                    )}
                 </div>
             </div>
         </div>

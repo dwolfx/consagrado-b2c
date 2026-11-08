@@ -120,21 +120,10 @@ const TabDetail = () => {
     });
     const mySubtotal = myOrdersList.reduce((acc, item) => acc + (getDisplayPrice(item) * item.quantity), 0);
 
-    // Recebe o grupo e divide APENAS os itens daquele pedido específico
-    // (a menos que venha de "Dividir comanda inteira")
-    const handleGroupClick = (group) => {
-        if (!group) return;
-
-        const itemsToDivide = group.isWholeTab
-            ? myOrdersList
-            : (group.items && group.items.length > 0 ? group.items : (group.id ? [group] : []));
-
-        if (!itemsToDivide || itemsToDivide.length === 0) return;
-        const representative = itemsToDivide.find(i => i.is_split) || itemsToDivide[0];
-        handleItemClick({
-            ...representative,
-            _groupItems: itemsToDivide
-        });
+    // Divide estritamente o item individual selecionado (sem divisão em lote/pedido)
+    const handleSplitSingleItem = (item) => {
+        if (!item) return;
+        handleItemClick(item);
     };
 
     // Permite ao solicitante cancelar a solicitação de divisão pendente
@@ -326,7 +315,7 @@ const TabDetail = () => {
                 currentUserId={user?.id}
                 showAll={showAll}
                 setShowAll={setShowAll}
-                onSplitGroup={handleGroupClick}
+                onSplitItem={handleSplitSingleItem}
                 onCancelPendingGroup={handleCancelPendingSplit}
                 onlineUsers={onlineUsers}
                 knownUsers={knownTableUsers}
