@@ -227,9 +227,12 @@
   background: rgba(245, 158, 11, 0.15);
   color: #fbbf24;
   border: 1px solid rgba(245, 158, 11, 0.3);
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: 100px;
   font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .table-user-sub-action {

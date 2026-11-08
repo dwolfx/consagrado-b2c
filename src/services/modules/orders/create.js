@@ -28,8 +28,8 @@ export const createApi = {
                 name: orderData.name,
                 price: parseFloat(orderData.price),
                 quantity: orderData.quantity,
-                status: 'pending',
-                ordered_by: (orderData.orderedBy || '').toLowerCase(), // Ensure UUID format
+                status: orderData.status || 'pending',
+                ordered_by: (orderData.orderedBy || '').toLowerCase(),
 
                 // Secure Metadata for Triggers
                 metadata: orderData.metadata || {},
@@ -39,7 +39,10 @@ export const createApi = {
                 split_parts: orderData.splitParts || 1,
                 original_price: orderData.originalPrice || null,
                 split_requester: orderData.splitRequester || null,
-                split_participants: orderData.splitParticipants || null
+                split_participants: orderData.splitParticipants || null,
+
+                // Batch ID (groups all items from the same order submission)
+                order_batch_id: orderData.batchId || null
             }])
             .select();
 
@@ -49,15 +52,42 @@ export const createApi = {
         }
         console.log('✅ Order added successfully:', data);
 
-        // Also update table status to occupied if needed
-        const { error: updateError } = await supabase
-            .from('tables')
-            .update({ status: 'occupied' })
-            .eq('id', tableId);
+        // Marca mesa como occupied via RPC (SECURITY DEFINER — bypassa RLS)
+        const { error: rpcError } = await supabase
+            .rpc('set_table_occupied', { p_table_id: tableId });
 
-        if (updateError) console.error('Error updating table status to occupied', updateError);
+        if (rpcError) console.error('Erro ao marcar mesa como ocupada:', rpcError);
 
         return data ? data[0] : null;
+    },
+
+    // Usado pelo amigo que ACEITA uma divisão — bypassa RLS via SECURITY DEFINER
+    addSplitOrder: async (tableId, orderData) => {
+        console.log("🔀 api.addSplitOrder (RPC)", { tableId, orderData });
+
+        const { data, error } = await supabase.rpc('add_split_order', {
+            p_table_id:           tableId,
+            p_product_id:         (orderData.productId && !String(orderData.productId).startsWith('half-'))
+                                    ? orderData.productId : null,
+            p_name:               orderData.name,
+            p_price:              parseFloat(orderData.price),
+            p_quantity:           orderData.quantity || 1,
+            p_ordered_by:         (orderData.orderedBy || '').toLowerCase(),
+            p_split_parts:        orderData.splitParts || 2,
+            p_original_price:     orderData.originalPrice || null,
+            p_split_requester:    orderData.splitRequester || null,
+            p_split_participants: orderData.splitParticipants || null,
+            p_metadata:           orderData.metadata || {},
+            p_batch_id:           orderData.batchId || null
+        });
+
+        if (error) {
+            console.error('❌ Error in addSplitOrder RPC:', error);
+            return null;
+        }
+
+        console.log('✅ addSplitOrder success, order ID:', data);
+        return { id: data };
     },
 
     callWaiter: async (tableId, userId) => {

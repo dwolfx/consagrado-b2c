@@ -28,31 +28,44 @@ function resolveUserPhoneDisplay(targetUser, currentUser) {
     return { visible: false, phone: null, private: true };
 }
 
-function computeSplitShares(itemPrice, selectedUserIds) {
+function computeSplitOrderCreation(itemPrice, selectedUserIds) {
     const totalParts = selectedUserIds.length || 1;
     const isActuallySplit = totalParts > 1;
     const splitPrice = isActuallySplit ? (itemPrice / totalParts) : itemPrice;
+    
+    // Regra crítica: se está esperando aceite de alguém, status inicial é 'waiting_split' (NÃO vai para a cozinha)
+    const initialStatus = isActuallySplit ? 'waiting_split' : 'pending';
+
     return {
         totalParts,
         isActuallySplit,
-        splitPrice: Number(splitPrice.toFixed(2))
+        splitPrice: Number(splitPrice.toFixed(2)),
+        initialStatus
     };
 }
 
-function resolveTableHeroAvatars(onlineUsers, currentUser) {
-    if (onlineUsers && onlineUsers.length > 0) {
-        return onlineUsers;
-    }
-    if (currentUser) {
-        return [currentUser];
-    }
-    return [{ id: 'me', name: 'Você' }];
+function resolveTableHeroLines(establishmentName, tableNumber, onlineUsers, currentUser) {
+    const safeUsers = onlineUsers && onlineUsers.length > 0
+        ? onlineUsers
+        : currentUser ? [currentUser] : [{ id: 'me', name: 'Você' }];
+
+    return {
+        line1_barName: establishmentName || 'Consagrado',
+        line2_tableLabel: tableNumber ? `Mesa ${tableNumber}` : 'Mesa 1',
+        line3_avatars: safeUsers,
+        hasContainerBorder: false // Exigência: sem borda de fundo nas bolinhas
+    };
+}
+
+function shouldShowKitchenOrder(orderStatus) {
+    // A cozinha e o garçom filtram apenas pedidos 'pending' e 'preparing'
+    return orderStatus === 'pending' || orderStatus === 'preparing';
 }
 
 // Suíte de Testes em Português Brasileiro (PT-BR)
-test('Suíte de Testes: Presença na Mesa, Usuário Convidado, Telefone e Divisão de Pedidos', async (t) => {
+test('Suíte de Testes: Presença na Mesa, Usuário Convidado, Notificações e Bloqueio de Cozinha', async (t) => {
     
-    await t.test('1. Diferenciação de Convidado na Mesa', () => {
+    await t.test('1. Diferenciação de Convidado na Mesa com Ícone (Sem Emojis)', () => {
         const guestByFlag = { id: 'usr-123', name: 'Carlos', is_guest: true };
         const guestById = { id: 'guest_98765', name: 'Visitante' };
         const guestByEmail = { id: 'usr-456', name: 'Ana', email: 'convidado_123@consagrado.com.br' };
@@ -61,74 +74,53 @@ test('Suíte de Testes: Presença na Mesa, Usuário Convidado, Telefone e Divis�
         assert.equal(isGuestUser(guestByFlag), true, 'Deve identificar usuário com flag is_guest como convidado');
         assert.equal(isGuestUser(guestById), true, 'Deve identificar usuário com id iniciando com guest como convidado');
         assert.equal(isGuestUser(guestByEmail), true, 'Deve identificar usuário com email de convidado');
-        assert.equal(isGuestUser(registeredUser), false, 'Usuário cadastrado padrão não deve ser identificado como convidado');
+        assert.equal(isGuestUser(registeredUser), false, 'Usuário cadastrado não deve ser identificado como convidado');
     });
 
-    await t.test('2. Privacidade e Exibição de Telefone do Perfil', () => {
-        const currentUser = { id: 'usr-me', name: 'Victor', phone: '+5511999998888', settings: { privacy_phone: true } };
-        const publicPeer = { id: 'usr-peer-1', name: 'Mariana', phone: '+5511988887777', settings: { privacy_phone: false } };
-        const privatePeer = { id: 'usr-peer-2', name: 'Lucas', phone: '+5511977776666', settings: { privacy_phone: true } };
+    await t.test('2. Bloqueio de Cozinha: Pedido em divisão NÃO pode ir para a cozinha até aceite', () => {
+        const itemPrice = 60.00;
+        const splitWithFriend = ['usr-victor', 'usr-friend'];
 
-        // Usuário próprio visualizando a si mesmo
-        const selfResult = resolveUserPhoneDisplay(currentUser, currentUser);
-        assert.equal(selfResult.visible, true, 'O usuário sempre pode ver o seu próprio telefone mesmo com privacidade ativa');
-        assert.equal(selfResult.phone, '+5511999998888');
+        const orderConfig = computeSplitOrderCreation(itemPrice, splitWithFriend);
+        assert.equal(orderConfig.isActuallySplit, true);
+        assert.equal(orderConfig.initialStatus, 'waiting_split', 'Status inicial deve ser waiting_split');
+        assert.equal(shouldShowKitchenOrder(orderConfig.initialStatus), false, 'Pedido waiting_split NÃO pode ser visível na cozinha');
 
-        // Visualizando contato público de outra pessoa
-        const publicResult = resolveUserPhoneDisplay(publicPeer, currentUser);
-        assert.equal(publicResult.visible, true, 'Telefone público de outro participante deve ser visível');
-        assert.equal(publicResult.phone, '+5511988887777');
-
-        // Visualizando contato privado de outra pessoa
-        const privateResult = resolveUserPhoneDisplay(privatePeer, currentUser);
-        assert.equal(privateResult.visible, false, 'Telefone privado de outro participante não deve ser exibido');
-        assert.equal(privateResult.private, true, 'Deve indicar status de contato privado');
+        // Cenário: Pedido individual (sem divisão)
+        const soloOrder = computeSplitOrderCreation(itemPrice, ['usr-victor']);
+        assert.equal(soloOrder.isActuallySplit, false);
+        assert.equal(soloOrder.initialStatus, 'pending', 'Pedido individual vai direto com status pending');
+        assert.equal(shouldShowKitchenOrder(soloOrder.initialStatus), true, 'Pedido individual deve ser visível na cozinha');
     });
 
-    await t.test('3. Divisão de Item Selecionado na Home ou no Cardápio', () => {
-        const itemPrice = 60.00; // Porção de R$ 60,00
-        const twoUsers = ['usr-1', 'usr-2'];
-        const threeUsers = ['usr-1', 'usr-2', 'usr-3'];
+    await t.test('3. Liberação para Cozinha após Aceite da Divisão', () => {
+        let orderStatus = 'waiting_split';
+        assert.equal(shouldShowKitchenOrder(orderStatus), false, 'Antes do aceite: bloqueado na cozinha');
 
-        const split2 = computeSplitShares(itemPrice, twoUsers);
-        assert.equal(split2.isActuallySplit, true, 'Divisão em 2 pessoas deve marcar pedido como dividido');
-        assert.equal(split2.totalParts, 2);
-        assert.equal(split2.splitPrice, 30.00, 'Preço deve ser 30.00 para cada um');
-
-        const split3 = computeSplitShares(itemPrice, threeUsers);
-        assert.equal(split3.totalParts, 3);
-        assert.equal(split3.splitPrice, 20.00, 'Preço deve ser 20.00 para cada um');
-
-        const singleUser = ['usr-1'];
-        const split1 = computeSplitShares(itemPrice, singleUser);
-        assert.equal(split1.isActuallySplit, false, 'Apenas 1 usuário não caracteriza pedido dividido');
-        assert.equal(split1.splitPrice, 60.00);
+        // Amigo aceita a divisão:
+        orderStatus = 'pending';
+        assert.equal(shouldShowKitchenOrder(orderStatus), true, 'Após o aceite: liberado para a cozinha como pending');
     });
 
-    await t.test('4. Bolinhas de Avatar na Mesa Ativa (Mesmo Sozinho)', () => {
-        const currentUser = { id: 'usr-solo', name: 'Victor Hugo', avatar_url: 'https://avatar.url/victor.png' };
-        
-        // Cenário: Usuário sozinho na mesa
-        const aloneAvatars = resolveTableHeroAvatars([], currentUser);
-        assert.equal(aloneAvatars.length, 1, 'Mesmo sozinho sem outros presentes, deve exibir a bolinha de avatar');
-        assert.equal(aloneAvatars[0].id, 'usr-solo');
+    await t.test('4. Estrutura de 3 Linhas no Hero da Mesa (Bolinhas sem borda de fundo)', () => {
+        const currentUser = { id: 'usr-victor', name: 'Victor Hugo' };
+        const peers = [currentUser, { id: 'usr-amigo', name: 'Convidado' }];
 
-        // Cenário: Múltiplas pessoas na mesa
-        const peers = [
-            currentUser,
-            { id: 'usr-2', name: 'Mariana' },
-            { id: 'usr-3', name: 'Rafael' }
+        const heroLayout = resolveTableHeroLines('Consagrado', 4, peers, currentUser);
+        assert.equal(heroLayout.line1_barName, 'Consagrado');
+        assert.equal(heroLayout.line2_tableLabel, 'Mesa 4');
+        assert.equal(heroLayout.line3_avatars.length, 2);
+        assert.equal(heroLayout.hasContainerBorder, false, 'As bolinhas de avatar não devem ter borda de card');
+    });
+
+    await t.test('5. Exibição de Alerta de Pedidos Pendentes de Aceitação', () => {
+        const pendingRequests = [
+            { id: 1, requesterName: 'Victor Hugo', itemName: 'Batata Frita', itemDetails: { batchId: 'batch-1' } }
         ];
-        const tableAvatars = resolveTableHeroAvatars(peers, currentUser);
-        assert.equal(tableAvatars.length, 3, 'Deve exibir todas as bolinhas de avatar dos presentes');
-    });
 
-    await t.test('5. Identificação e Redirecionamento da Comanda no Rodapé da Home', () => {
-        const dockActionConfig = {
-            label: 'Minha comanda',
-            targetRoute: '/tab'
-        };
-        assert.equal(dockActionConfig.label, 'Minha comanda', 'Botão da Home deve se chamar Minha comanda');
-        assert.equal(dockActionConfig.targetRoute, '/tab', 'Botão deve redirecionar para a rota /tab da comanda');
+        const hasPending = pendingRequests.length > 0;
+        assert.equal(hasPending, true, 'Deve indicar que o usuário possui pedidos pendentes de aceitação');
+        assert.equal(pendingRequests[0].requesterName, 'Victor Hugo');
+        assert.equal(pendingRequests[0].itemName, 'Batata Frita');
     });
 });

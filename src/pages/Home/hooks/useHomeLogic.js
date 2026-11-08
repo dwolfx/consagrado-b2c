@@ -272,8 +272,10 @@ export const useHomeLogic = () => {
             );
             const latestOrder = sorted[0];
 
-            if (latestOrder.status === 'ready') {
-                setStatusBadge({ label: 'Saindo agora 🛵', variant: 'ready' });
+            if (latestOrder.status === 'waiting_split') {
+                setStatusBadge({ label: 'Aguardando aceite da mesa', variant: 'waiting' });
+            } else if (latestOrder.status === 'ready') {
+                setStatusBadge({ label: 'Saindo agora', variant: 'ready' });
             } else if (latestOrder.status === 'preparing') {
                 setStatusBadge({ label: 'Em preparo', variant: 'preparing' });
             } else if (latestOrder.status === 'pending') {
@@ -356,13 +358,14 @@ export const useHomeLogic = () => {
                     originalPrice: isActuallySplit ? realPrice : null,
                     splitRequester: isActuallySplit ? currentUserId : null,
                     splitParticipants: isActuallySplit ? selectedUserIds : null,
-                    batchId
+                    batchId,
+                    status: isActuallySplit ? 'waiting_split' : 'pending'
                 });
 
                 addToast(
                     isActuallySplit
-                        ? 'Pedido dividido com a mesa enviado! 🍻'
-                        : 'Pedido enviado para a comanda! 👨‍🍳',
+                        ? 'Pedido enviado. Aguardando aceite da mesa.'
+                        : 'Pedido enviado para a cozinha.',
                     'success'
                 );
             } catch (err) {

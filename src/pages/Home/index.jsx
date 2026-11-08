@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import TableUsersModal from '../../components/TableUsersModal';
 import SplitItemModal from '../../components/SplitItemModal';
 import { useHomeLogic } from './hooks/useHomeLogic';
+import { useNotification } from '../../context/NotificationContext';
 import HomeHeader from './components/HomeHeader';
 import TableHeroCard from './components/TableHeroCard';
+import PendingSplitBanner from './components/PendingSplitBanner';
 import FeaturedCarouselMD from './components/FeaturedCarouselMD';
 import UsualOrdersCarouselSM from './components/UsualOrdersCarouselSM';
 import PrimaryActionsRow from './components/PrimaryActionsRow';
@@ -18,6 +20,7 @@ import './Home.css';
 const Home = () => {
     const navigate = useNavigate();
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const { pendingRequests, setIncomingRequest } = useNotification();
 
     const {
         user,
@@ -73,6 +76,13 @@ const Home = () => {
                             onlineUsers={onlineUsers}
                             onOpenUsersModal={() => setShowUsersModal(true)}
                         />
+
+                        {pendingRequests && pendingRequests.length > 0 && (
+                            <PendingSplitBanner
+                                requests={pendingRequests}
+                                onReviewRequest={(req) => setIncomingRequest(req)}
+                            />
+                        )}
 
                         <FeaturedCarouselMD
                             title={contextualTitle}

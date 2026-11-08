@@ -9,14 +9,18 @@ const OrderStatusDock = ({ statusBadge, onNavigateTab }) => {
             ? 'home-dock-dot home-dock-dot--ready'
             : variant === 'delivered'
               ? 'home-dock-dot home-dock-dot--delivered'
-              : 'home-dock-dot';
+              : variant === 'waiting'
+                ? 'home-dock-dot home-dock-dot--waiting'
+                : 'home-dock-dot';
 
     const textClass =
         variant === 'ready'
             ? 'home-dock-status-text home-dock-status-text--ready'
             : variant === 'delivered'
               ? 'home-dock-status-text home-dock-status-text--delivered'
-              : 'home-dock-status-text';
+              : variant === 'waiting'
+                ? 'home-dock-status-text home-dock-status-text--waiting'
+                : 'home-dock-status-text';
 
     return (
         <div className="home-bottom-dock-fixed">
@@ -30,7 +34,7 @@ const OrderStatusDock = ({ statusBadge, onNavigateTab }) => {
                         if (e.key === 'Enter' || e.key === ' ') onNavigateTab?.();
                     }}
                 >
-                    <span className="home-dock-label">Cadê meu pedido?</span>
+                    <span className="home-dock-label">Status do pedido</span>
 
                     <div className="home-dock-status-row">
                         <span className={dotClass} aria-hidden="true" />

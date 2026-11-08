@@ -141,18 +141,19 @@
   justify-content: center;
   margin-top: 0.75rem;
   cursor: pointer;
-  padding: 4px 10px;
-  border-radius: 100px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+  padding: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  outline: none;
+  transition: transform 0.2s ease;
 }
 
 .home-table-avatars-row:hover,
 .home-table-avatars-row:focus-visible {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(245, 158, 11, 0.4);
-  transform: scale(1.05);
+  background: transparent;
+  border: none;
+  transform: scale(1.06);
   outline: none;
 }
 
@@ -571,6 +572,12 @@
   animation: none;
 }
 
+.home-dock-dot--waiting {
+  background: #f59e0b;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.7);
+  animation: statusPulse 1.4s infinite ease-in-out;
+}
+
 .home-dock-status-text {
   font-size: 1.12rem;
   font-weight: 800;
@@ -579,6 +586,10 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.home-dock-status-text--waiting {
+  color: #fbbf24;
 }
 
 .home-dock-status-text--ready {

@@ -39,6 +39,16 @@ export const splitApi = {
             requesterId
         }, channelKey);
 
+        if (itemDetails?.tableId) {
+            const tableChannel = getOrJoinTableChannel(itemDetails.tableId);
+            await sendBroadcast(tableChannel, 'request_order_share', {
+                itemDetails,
+                targetUserId,
+                requesterName,
+                requesterId
+            }, `table_notifications:${itemDetails.tableId}`);
+        }
+
         return true;
     },
 
@@ -57,6 +67,17 @@ export const splitApi = {
             splitMetadata
         }, channelKey);
 
+        return true;
+    },
+
+    notifySplitRemoval: async (targetUserId, details) => {
+        console.log(`📡 api.notifySplitRemoval called for User: ${targetUserId}`, details);
+        const channel = getOrJoinUserChannel(targetUserId);
+        const channelKey = `user_notifications:${targetUserId}`;
+        await sendBroadcast(channel, 'split_removed', {
+            targetUserId,
+            ...details
+        }, channelKey);
         return true;
     },
 

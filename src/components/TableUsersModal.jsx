@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Users, ArrowLeft, Phone, Shield, Sparkles } from 'lucide-react';
+import { X, Users, ArrowLeft, Phone, Shield, UserCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { formatPhoneNumber } from 'react-phone-number-input';
 import './TableUsersModal.css';
@@ -124,7 +124,8 @@ const TableUsersModal = ({ users = [], onClose }) => {
                                                 )}
                                                 {isGuest && (
                                                     <span className="table-user-badge-guest">
-                                                        ⚡ Convidado
+                                                        <UserCheck size={11} strokeWidth={2.4} />
+                                                        <span>Convidado</span>
                                                     </span>
                                                 )}
                                             </div>
@@ -181,7 +182,7 @@ const TableUsersModal = ({ users = [], onClose }) => {
                                         <div className="table-user-detail-cards">
                                             {isGuest ? (
                                                 <div className="table-user-card table-user-card--guest">
-                                                    <Sparkles size={20} className="table-user-card-icon" />
+                                                    <UserCheck size={20} className="table-user-card-icon" />
                                                     <div>
                                                         <div className="table-user-card-label">Modo Convidado</div>
                                                         <div className="table-user-card-value">

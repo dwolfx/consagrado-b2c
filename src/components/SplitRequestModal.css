@@ -1,0 +1,150 @@
+/* SplitRequestModal.css */
+.split-request-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 2147483647;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 1rem;
+  animation: splitReqFadeIn 0.25s ease-out;
+}
+
+.split-request-sheet {
+  background: var(--bg-secondary, #181a22);
+  width: 100%;
+  max-width: 400px;
+  border-radius: 24px;
+  padding: 1.5rem;
+  text-align: center;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.6);
+  animation: splitReqSlideUp 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 0.5rem;
+}
+
+.split-request-icon-wrap {
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(135deg, var(--brand-color, #f59e0b), #d97706);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1rem auto;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+  color: #000;
+}
+
+.split-request-title {
+  margin: 0 0 0.4rem 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.split-request-body-text {
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0 0 1.5rem 0;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.split-request-requester {
+  color: #fff;
+  font-weight: 700;
+}
+
+.split-request-item-name {
+  color: var(--brand-color, #f59e0b);
+  font-weight: 700;
+  display: inline-block;
+}
+
+.split-request-actions-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.split-request-btn-accept {
+  width: 100%;
+  background: var(--brand-color, #f59e0b);
+  color: #000;
+  border: none;
+  border-radius: 14px;
+  padding: 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.split-request-btn-accept:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.split-request-btn-accept-all {
+  width: 100%;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 14px;
+  color: var(--brand-color, #f59e0b);
+  padding: 0.8rem;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.15s ease;
+}
+
+.split-request-btn-accept-all:hover {
+  background: rgba(245, 158, 11, 0.2);
+}
+
+.split-request-note-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin: 0 0.5rem;
+}
+
+.split-request-btn-decline {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 0.6rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 10px;
+  transition: color 0.15s ease;
+}
+
+.split-request-btn-decline:hover {
+  color: #fff;
+}
+
+@keyframes splitReqFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes splitReqSlideUp {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}

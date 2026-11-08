@@ -22,10 +22,12 @@ const TableHeroCard = ({
         <section className="home-table-hero" aria-label="Informações da mesa ativa">
             <div className="home-hero-accent" />
 
+            {/* Linha 1: Nome do Bar */}
             <h1 className="home-establishment-title">
                 {establishment?.name || 'Consagrado'}
             </h1>
 
+            {/* Linha 2: Mesa */}
             <div className="home-table-badge-wrap">
                 <button
                     type="button"
@@ -38,7 +40,7 @@ const TableHeroCard = ({
                 </button>
             </div>
 
-            {/* Bolinhas com o avatar das pessoas na mesa (sem texto, mesmo sozinho) */}
+            {/* Linha 3: Pessoas na Mesa (bolinhas sem borda de fundo) */}
             <div
                 className="home-table-avatars-row"
                 role="button"

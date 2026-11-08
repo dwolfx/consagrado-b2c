@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { X, Check, Users } from 'lucide-react';
+import { X, Check, Users, UserCheck } from 'lucide-react';
 import { isGuestUser } from './TableUsersModal';
 import './SplitItemModal.css';
 
@@ -182,7 +182,10 @@ const SplitItemModal = ({
                                         </span>
                                         {isMe && <span className="split-user-tag-me">VOCÊ</span>}
                                         {isGuest && (
-                                            <span className="split-user-tag-guest">⚡ Convidado</span>
+                                            <span className="split-user-tag-guest">
+                                                <UserCheck size={10} strokeWidth={2.4} />
+                                                <span>Convidado</span>
+                                            </span>
                                         )}
                                     </div>
                                 </div>
