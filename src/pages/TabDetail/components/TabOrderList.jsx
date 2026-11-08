@@ -1,181 +1,108 @@
-import React from 'react';
-import { Users } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Users, Scissors } from 'lucide-react';
+import OrderGroupCard from './OrderGroupCard';
+import OrderGroupModal from './OrderGroupModal';
 
-const TabOrderList = ({ myOrders, othersOrders, showAll, setShowAll, onSplitItem, onlineUsers = [] }) => {
+const STATUS_ORDER = ['pending', 'preparing', 'ready', 'delivered', 'completed'];
 
-    const formatPrice = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+const TabOrderList = ({
+    myOrders = [],
+    othersOrders = [],
+    allOrders = [],
+    currentUserId,
+    showAll,
+    setShowAll,
+    onSplitGroup,
+    onCancelPendingGroup,
+    onlineUsers = [],
+    knownUsers = []
+}) => {
+    const [openGroup, setOpenGroup] = useState(null);
 
-    // Helper to get user info
-    const getUserInfo = (id) => {
-        if (!id) return { name: '?', avatar: null };
-        const found = onlineUsers.find(u => u.id === id);
-        return found || { name: '?', avatar_url: null };
+    // Agrupa por order_batch_id. Fallback legado: split + janela 5 min.
+    const groupOrders = (orders) => {
+        const map = {};
+        orders.forEach(order => {
+            let key;
+            if (order.order_batch_id) {
+                key = order.order_batch_id;
+            } else if (order.split_requester || order.is_split) {
+                const requester = order.split_requester || order.ordered_by;
+                const timeWindow = Math.floor(new Date(order.created_at).getTime() / (5 * 60 * 1000));
+                key = `legacy_${requester}_${timeWindow}`;
+            } else {
+                key = order.id;
+            }
+
+            if (!map[key]) {
+                map[key] = { key, createdAt: order.created_at, status: order.status, items: [] };
+            }
+            map[key].items.push(order);
+
+            const current = STATUS_ORDER.indexOf(map[key].status);
+            const incoming = STATUS_ORDER.indexOf(order.status);
+            if (incoming !== -1 && (current === -1 || incoming < current)) {
+                map[key].status = order.status;
+            }
+        });
+        return Object.values(map).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
     };
 
-    const AvatarStack = ({ requesterId, participants = [] }) => {
-        const requester = getUserInfo(requesterId);
-        // "Others" are participants excluding the requester
-        const othersIds = participants.filter(id => id !== requesterId);
-
-        return (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {/* Requester Avatar (Main) */}
-                <div style={{ width: '24px', height: '24px', borderRadius: '50%', overflow: 'hidden', border: '1px solid var(--primary)' }}>
-                    <img
-                        src={requester.avatar_url || `https://ui-avatars.com/api/?name=${requester.name || 'User'}&background=random`}
-                        alt={requester.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                </div>
-
-                {othersIds.length > 0 && (
-                    <>
-                        <div style={{ width: '1px', height: '14px', background: 'var(--text-secondary)', opacity: 0.3 }}></div>
-
-                        {/* Stacked Others */}
-                        <div style={{ display: 'flex', paddingLeft: '4px' }}>
-                            {othersIds.map((uid, idx) => {
-                                const u = getUserInfo(uid);
-                                return (
-                                    <div key={uid} style={{
-                                        width: '20px', height: '20px', borderRadius: '50%', overflow: 'hidden',
-                                        border: '1px solid white', marginLeft: idx === 0 ? 0 : '-8px',
-                                        zIndex: 10 - idx
-                                    }}>
-                                        <img
-                                            src={u.avatar_url || `https://ui-avatars.com/api/?name=${u.name || 'User'}&background=random`}
-                                            alt={u.name}
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                        />
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </>
-                )}
-            </div>
-        );
-    };
-
-    // Helper for Status
-    const getStatusConfig = (s) => {
-        switch (s) {
-            case 'pending': return { label: 'Aguardando', color: '#b45309', bg: '#fef3c7' };
-            case 'preparing': return { label: 'Preparando', color: '#1d4ed8', bg: '#dbeafe' };
-            case 'ready':
-            case 'delivered':
-            case 'completed': return { label: 'Entregando', color: '#15803d', bg: '#dcfce7' };
-            case 'paid': return { label: 'Pago', color: '#15803d', bg: '#dcfce7' };
-            default: return { label: s, color: '#374151', bg: '#f3f4f6' };
-        }
-    };
-
-    // Helper to calculate Display Price honoring Metadata
-    const getDisplayPrice = (item) => {
-        if (item.is_split && item.split_parts > 1 && item.original_price > 0) {
-            return Number(item.original_price) / item.split_parts;
-        }
-        return Number(item.price);
-    };
-
-    // Calculate Others Total
+    const myGroups     = useMemo(() => groupOrders(myOrders),     [myOrders]);
+    const othersGroups = useMemo(() => groupOrders(othersOrders), [othersOrders]);
 
     return (
         <div style={{ display: 'grid', gap: '1rem', marginBottom: '6rem' }}>
-            {/* Meus Pedidos */}
-            <h4 style={{ margin: '0 0 0.5rem 0', opacity: 0.9 }}>Seus Pedidos (Toque para dividir)</h4>
-            {myOrders.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 0.5rem 0' }}>
+                <h4 style={{ margin: 0, opacity: 0.9 }}>Seus Pedidos</h4>
+                {myOrders.length > 1 && onSplitGroup && (
+                    <button
+                        onClick={() => onSplitGroup({ isWholeTab: true, items: myOrders })}
+                        className="btn-ghost"
+                        style={{
+                            fontSize: '0.8rem',
+                            color: 'var(--primary)',
+                            fontWeight: '600',
+                            padding: '4px 8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                        }}
+                    >
+                        <Scissors size={14} />
+                        Dividir comanda inteira
+                    </button>
+                )}
+            </div>
+
+            {myGroups.length === 0 ? (
+                <div style={{
+                    textAlign: 'center', color: 'var(--text-secondary)',
+                    padding: '1rem', background: 'var(--bg-tertiary)', borderRadius: '12px'
+                }}>
                     Você ainda não pediu nada.
                 </div>
             ) : (
-                myOrders.map(item => {
-                    const statusConfig = getStatusConfig(item.status);
-
-                    // Logic for Split Tag
-                    const isSplit = item.is_split && item.split_parts > 1;
-                    const cleanName = isSplit
-                        ? item.name.replace(/^\d+\s*\/\s*\d+\s+(.*)/, '$1').replace(/^\d+\s*\/\s*\d+\s+/, '')
-                        : item.name;
-
-                    const participants = item.split_participants || (isSplit ? [] : []);
-
-                    return (
-                        <div
-                            key={item.id}
-                            onClick={() => onSplitItem(item)}
-                            className="card"
-                            style={{
-                                marginBottom: 0, borderLeft: '4px solid var(--primary)', cursor: 'pointer',
-                                position: 'relative'
-                            }}
-                        >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                                <span style={{ fontWeight: '600', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: isSplit ? '6px' : '12px' }}>
-                                    {item.quantity}x
-                                    {isSplit && (
-                                        <span style={{
-                                            fontSize: '0.7rem',
-                                            background: '#374151',
-                                            color: '#f9fafb',
-                                            padding: '1px 6px',
-                                            borderRadius: '4px',
-                                            fontWeight: '400',
-                                            verticalAlign: 'middle',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            height: '18px',
-                                            marginRight: '2px'
-                                        }}>
-                                            1/{item.split_parts}
-                                        </span>
-                                    )}
-                                    {cleanName}
-                                </span>
-                                <span style={{ fontWeight: '700' }}>{formatPrice(getDisplayPrice(item) * item.quantity)}</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <AvatarStack requesterId={item.split_requester || item.ordered_by} participants={participants} />
-
-                                <span style={{
-                                    fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px',
-                                    backgroundColor: statusConfig.bg,
-                                    color: statusConfig.color,
-                                    fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px',
-                                    marginLeft: 'auto'
-                                }}>
-                                    {statusConfig.label}
-                                </span>
-                                {isSplit ? (
-                                    <span style={{
-                                        fontSize: '0.7rem', color: 'var(--primary)',
-                                        border: '1px solid var(--primary)', padding: '2px 6px', borderRadius: '4px',
-                                        fontWeight: '600'
-                                    }}>
-                                        REDIVIDIR
-                                    </span>
-                                ) : (
-                                    <span style={{
-                                        fontSize: '0.7rem', color: 'var(--text-secondary)',
-                                        border: '1px solid var(--text-secondary)', padding: '2px 6px', borderRadius: '4px'
-                                    }}>
-                                        DIVIDIR
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })
+                <div style={{ display: 'grid', gap: '1rem' }}>
+                    {myGroups.map(group => (
+                        <OrderGroupCard
+                            key={group.key}
+                            group={group}
+                            onSelect={setOpenGroup}
+                            onCancelPending={onCancelPendingGroup}
+                            onlineUsers={onlineUsers}
+                            knownUsers={knownUsers}
+                            allOrders={allOrders}
+                            currentUserId={currentUserId}
+                        />
+                    ))}
+                </div>
             )}
 
-            {/* Pedidos da Mesa (Toggle) */}
-            {othersOrders.length > 0 && (
+            {othersGroups.length > 0 && (
                 <div style={{ marginTop: '1rem' }}>
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: '1rem',
-                        marginBottom: '1rem', opacity: 0.8
-                    }}>
-                        <div style={{ height: '1px', flex: 1, background: 'var(--bg-tertiary)' }}></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', opacity: 0.8 }}>
+                        <div style={{ height: '1px', flex: 1, background: 'var(--bg-tertiary)' }} />
                         <button
                             onClick={() => setShowAll(!showAll)}
                             style={{
@@ -185,70 +112,46 @@ const TabOrderList = ({ myOrders, othersOrders, showAll, setShowAll, onSplitItem
                             }}
                         >
                             <Users size={16} />
-                            {showAll ? 'Ocultar Mesa' : `Ver Mesa (+${othersOrders.length})`}
+                            {showAll ? 'Ocultar Mesa' : `Ver Mesa (+${othersGroups.length})`}
                         </button>
-                        <div style={{ height: '1px', flex: 1, background: 'var(--bg-tertiary)' }}></div>
+                        <div style={{ height: '1px', flex: 1, background: 'var(--bg-tertiary)' }} />
                     </div>
 
                     {showAll && (
                         <div style={{ display: 'grid', gap: '1rem', animation: 'fadeIn 0.3s' }}>
-                            {othersOrders.map(item => {
-                                const statusConfig = getStatusConfig(item.status);
-                                const isSplit = item.is_split && item.split_parts > 1;
-                                const cleanName = isSplit
-                                    ? item.name.replace(/^\d+\s*\/\s*\d+\s+(.*)/, '$1').replace(/^\d+\s*\/\s*\d+\s+/, '')
-                                    : item.name;
-                                const participants = item.split_participants || [];
-
-                                return (
-                                    <div key={item.id} className="card" style={{ marginBottom: 0, opacity: 0.85, background: 'var(--bg-tertiary)' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                                            <span style={{ fontWeight: '600', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                                {item.quantity}x
-                                                {isSplit && (
-                                                    <span style={{
-                                                        fontSize: '0.7rem',
-                                                        background: '#374151',
-                                                        color: '#f9fafb',
-                                                        padding: '1px 6px',
-                                                        borderRadius: '4px',
-                                                        fontWeight: '400',
-                                                        verticalAlign: 'middle',
-                                                        display: 'inline-flex',
-                                                        alignItems: 'center',
-                                                        height: '18px',
-                                                        marginRight: '2px'
-                                                    }}>
-                                                        1/{item.split_parts}
-                                                    </span>
-                                                )}
-                                                {cleanName}
-                                            </span>
-                                            <span style={{ fontWeight: '700', color: 'var(--text-secondary)' }}>{formatPrice(getDisplayPrice(item) * item.quantity)}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <AvatarStack requesterId={item.split_requester || item.ordered_by} participants={participants} />
-
-                                            <span style={{
-                                                fontSize: '0.7rem', padding: '3px 8px', borderRadius: '6px',
-                                                backgroundColor: 'var(--bg-secondary)', // Neutral for others
-                                                color: statusConfig.color,
-                                                fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px',
-                                                border: '1px solid rgba(0,0,0,0.05)',
-                                                marginLeft: 'auto'
-                                            }}>
-                                                {statusConfig.label}
-                                            </span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                            {othersGroups.map(group => (
+                                <OrderGroupCard
+                                    key={group.key}
+                                    group={group}
+                                    dimmed={true}
+                                    onSelect={setOpenGroup}
+                                    onlineUsers={onlineUsers}
+                                    knownUsers={knownUsers}
+                                    allOrders={allOrders}
+                                    currentUserId={currentUserId}
+                                />
+                            ))}
                         </div>
                     )}
                 </div>
             )}
+
+            {openGroup && (
+                <OrderGroupModal
+                    group={openGroup}
+                    isMine={myGroups.some(g => g.key === openGroup.key)}
+                    onClose={() => setOpenGroup(null)}
+                    onSplit={onSplitGroup}
+                    onlineUsers={onlineUsers}
+                    knownUsers={knownUsers}
+                    allOrders={allOrders}
+                    currentUserId={currentUserId}
+                />
+            )}
+
             <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes fadeIn  { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
             `}</style>
         </div>
     );

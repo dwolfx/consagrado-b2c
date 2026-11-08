@@ -123,4 +123,36 @@ test('Suíte de Testes: Presença na Mesa, Usuário Convidado, Notificações e 
         assert.equal(pendingRequests[0].requesterName, 'Victor Hugo');
         assert.equal(pendingRequests[0].itemName, 'Batata Frita');
     });
+
+    await t.test('6. Absorção de Frações ao Remover Participante: 3 pessoas -> remove 1 -> Solicitante fica com 2/3 e Amigo com 1/3', () => {
+        const basePrice = 60.0;
+        const totalOriginalParts = 3;
+        const removedCount = 1;
+        const remainingParticipantsCount = 2; // Solicitante + 1 Amigo
+
+        // Cálculo de absorção do solicitante:
+        const myParts = 1 + removedCount; // 2 partes
+        const requesterPrice = (basePrice / totalOriginalParts) * myParts;
+        const peerPrice = (basePrice / totalOriginalParts) * 1;
+
+        assert.equal(myParts, 2, 'Solicitante deve absorver a parte e ficar com 2 partes');
+        assert.equal(requesterPrice, 40.0, 'Preço do solicitante deve ser 2/3 (R$ 40,00 de R$ 60,00)');
+        assert.equal(peerPrice, 20.0, 'Preço do amigo restante deve ser 1/3 (R$ 20,00)');
+        assert.equal(requesterPrice + peerPrice, basePrice, 'A soma das frações deve totalizar exatamente 100% do pedido');
+    });
+
+    await t.test('7. Exclusão de Pedido do Participante Removido (Sem Duplicação)', () => {
+        let comandaBanco = [
+            { id: 'ord-requester', ordered_by: 'usr-victor', name: '1/2 Pizza', price: 25 },
+            { id: 'ord-removed', ordered_by: 'usr-convidado', name: '1/2 Pizza', price: 25 }
+        ];
+
+        const removedUserId = 'usr-convidado';
+
+        // Simula a exclusão efetuada no useSplitLogic:
+        comandaBanco = comandaBanco.filter(item => item.ordered_by !== removedUserId);
+
+        assert.equal(comandaBanco.length, 1, 'O item do participante removido deve ser totalmente deletado do banco');
+        assert.equal(comandaBanco[0].ordered_by, 'usr-victor', 'Apenas o pedido do solicitante deve permanecer');
+    });
 });

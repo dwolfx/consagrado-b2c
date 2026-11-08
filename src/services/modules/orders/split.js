@@ -78,6 +78,14 @@ export const splitApi = {
             targetUserId,
             ...details
         }, channelKey);
+
+        if (details?.tableId) {
+            const tableChannel = getOrJoinTableChannel(details.tableId);
+            await sendBroadcast(tableChannel, 'split_removed', {
+                targetUserId,
+                ...details
+            }, `table_notifications:${details.tableId}`);
+        }
         return true;
     },
 

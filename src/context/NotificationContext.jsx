@@ -291,6 +291,14 @@ export const NotificationProvider = ({ children }) => {
             .on('broadcast', { event: 'request_order_share' }, (payload) => {
                 registerIncomingShare(payload.payload);
             })
+            .on('broadcast', { event: 'split_removed' }, (payload) => {
+                const { removedUserId, itemName, requesterName } = payload.payload || {};
+                const myId = String(user?.id || '').toLowerCase();
+                if (String(removedUserId).toLowerCase() === myId) {
+                    addToast(`${requesterName || 'Alguém'} removeu você da divisão de ${itemName || 'pedido'}.`, 'info');
+                    window.dispatchEvent(new CustomEvent('tab:reload'));
+                }
+            })
             .subscribe();
 
         // Orders Status Channel (User specific)
@@ -352,6 +360,14 @@ export const NotificationProvider = ({ children }) => {
             })
             .on('broadcast', { event: 'request_order_share' }, (payload) => {
                 registerIncomingShare(payload.payload);
+            })
+            .on('broadcast', { event: 'split_removed' }, (payload) => {
+                const { removedUserId, itemName, requesterName } = payload.payload || {};
+                const myId = String(user?.id || '').toLowerCase();
+                if (String(removedUserId).toLowerCase() === myId) {
+                    addToast(`${requesterName || 'Alguém'} removeu você da divisão de ${itemName || 'pedido'}.`, 'info');
+                    window.dispatchEvent(new CustomEvent('tab:reload'));
+                }
             })
             .subscribe();
 

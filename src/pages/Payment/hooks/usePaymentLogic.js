@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { api } from '../../../services/api';
+import { api, supabase } from '../../../services/api';
 import { useAuth } from '../../../context/AuthContext';
+import { useToast } from '../../../context/ToastContext';
 import { useTableContext } from '../../../context/TableContext';
 
 export const usePaymentLogic = () => {
     const { user } = useAuth();
+    const { addToast } = useToast();
     const { setTableId } = useTableContext();
 
     // UI State
@@ -47,7 +49,18 @@ export const usePaymentLogic = () => {
                     let displayPrice = Number(o.price);
 
                     if (o.is_split && o.split_parts > 1 && o.original_price > 0) {
-                        displayPrice = Number(o.original_price) / o.split_parts;
+                        if (o.metadata?.my_parts) {
+                            displayPrice = (Number(o.original_price) / o.split_parts) * Number(o.metadata.my_parts);
+                        } else {
+                            const match = (o.name || '').match(/^(\d+)\s*\/\s*(\d+)/);
+                            if (match) {
+                                const num = parseInt(match[1], 10);
+                                const den = parseInt(match[2], 10);
+                                if (den > 0) displayPrice = (Number(o.original_price) / den) * num;
+                            } else {
+                                displayPrice = Number(o.price) || (Number(o.original_price) / o.split_parts);
+                            }
+                        }
                     }
 
                     calculatedSubtotal += (displayPrice * o.quantity);
@@ -77,16 +90,17 @@ export const usePaymentLogic = () => {
     const displayedTip = feeRemoved ? 0 : tipValue;
 
     // Machine Fee (4%) + App Fee
+    // Machine Fee applies to subtotal + tip (usually) or just subtotal? 
+    // Logic from original: (subtotal + displayedTip) * 0.04
     const machineFeeValue = (subtotal + displayedTip) * 0.04;
     const operationalFeeValue = machineFeeValue + applicableAppFee;
 
     const total = subtotal + displayedTip + operationalFeeValue;
 
     // Actions
-    const handleRemoveFee = (customReason) => {
-        const reason = typeof customReason === 'string' ? customReason : removeFeeReason;
-        if (reason.trim().length < 5) {
-            alert("Por favor, explique o motivo.");
+    const handleRemoveFee = () => {
+        if (removeFeeReason.trim().length < 5) {
+            addToast("Por favor, explique o motivo.", "warning");
             return false;
         }
         setFeeRemoved(true);
@@ -96,17 +110,32 @@ export const usePaymentLogic = () => {
 
     const handlePayment = async () => {
         setLoading(true);
-        try {
-            const tableId = localStorage.getItem('my_table_id');
-            if (tableId && user?.id) {
-                await api.payUserOrders(tableId, user.id);
-            }
-            setSuccess(true);
-        } catch (err) {
-            console.error("Error during payment:", err);
-        } finally {
+        // Simulate processing delay
+        await new Promise(r => setTimeout(r, 1500));
+
+        const tableId = localStorage.getItem('my_table_id');
+        if (!tableId || !user?.id) {
+            addToast('Erro: mesa não identificada.', 'error');
             setLoading(false);
+            return;
         }
+
+        const paid = await api.payUserOrders(tableId, user.id);
+        if (!paid) {
+            addToast('Falha ao registrar pagamento. Tente novamente.', 'error');
+            setLoading(false);
+            return;
+        }
+
+        // Libera a mesa no banco (ignora erro — não bloqueia o fluxo)
+        supabase.rpc('set_table_available', { p_table_id: tableId })
+            .then(({ error }) => { if (error) console.warn('set_table_available:', error); });
+
+        // Limpa a mesa imediatamente — não depende do botão "Voltar ao Início"
+        setTableId(null);
+
+        setSuccess(true);
+        setLoading(false);
     };
 
     return {
