@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Users, Scissors } from 'lucide-react';
+import { Users } from 'lucide-react';
 import OrderGroupCard from './OrderGroupCard';
 import OrderGroupModal from './OrderGroupModal';
 
@@ -55,24 +55,6 @@ const TabOrderList = ({
         <div style={{ display: 'grid', gap: '1rem', marginBottom: '6rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 0.5rem 0' }}>
                 <h4 style={{ margin: 0, opacity: 0.9 }}>Seus Pedidos</h4>
-                {myOrders.length > 1 && onSplitGroup && (
-                    <button
-                        onClick={() => onSplitGroup({ isWholeTab: true, items: myOrders })}
-                        className="btn-ghost"
-                        style={{
-                            fontSize: '0.8rem',
-                            color: 'var(--primary)',
-                            fontWeight: '600',
-                            padding: '4px 8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                        }}
-                    >
-                        <Scissors size={14} />
-                        Dividir comanda inteira
-                    </button>
-                )}
             </div>
 
             {myGroups.length === 0 ? (
