@@ -272,7 +272,9 @@ export const useHomeLogic = () => {
             );
             const latestOrder = sorted[0];
 
-            if (latestOrder.status === 'waiting_split') {
+            const isWaitingSplit = latestOrder.status === 'waiting_split' || latestOrder.metadata?.waiting_split === true;
+
+            if (isWaitingSplit) {
                 setStatusBadge({ label: 'Aguardando aceite da mesa', variant: 'waiting' });
             } else if (latestOrder.status === 'ready') {
                 setStatusBadge({ label: 'Saindo agora', variant: 'ready' });
@@ -359,7 +361,11 @@ export const useHomeLogic = () => {
                     splitRequester: isActuallySplit ? currentUserId : null,
                     splitParticipants: isActuallySplit ? selectedUserIds : null,
                     batchId,
-                    status: isActuallySplit ? 'waiting_split' : 'pending'
+                    metadata: {
+                        ...(item.metadata || {}),
+                        waiting_split: isActuallySplit
+                    },
+                    status: 'pending'
                 });
 
                 addToast(

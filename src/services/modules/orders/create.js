@@ -18,6 +18,15 @@ export const createApi = {
 
         const establishmentId = tableData.establishment_id;
 
+        const ALLOWED_STATUSES = ['pending', 'preparing', 'ready', 'delivered', 'paid', 'cancelled'];
+        const isWaiting = orderData.status === 'waiting_split' || orderData.waitingSplit;
+        const validStatus = (orderData.status && ALLOWED_STATUSES.includes(orderData.status)) ? orderData.status : 'pending';
+
+        const mergedMetadata = {
+            ...(orderData.metadata || {}),
+            ...(isWaiting ? { waiting_split: true } : {})
+        };
+
         const { data, error } = await supabase
             .from('orders')
             .insert([{
@@ -28,11 +37,11 @@ export const createApi = {
                 name: orderData.name,
                 price: parseFloat(orderData.price),
                 quantity: orderData.quantity,
-                status: orderData.status || 'pending',
+                status: validStatus,
                 ordered_by: (orderData.orderedBy || '').toLowerCase(),
 
                 // Secure Metadata for Triggers
-                metadata: orderData.metadata || {},
+                metadata: mergedMetadata,
 
                 // Split Metadata
                 is_split: !!orderData.isSplit,

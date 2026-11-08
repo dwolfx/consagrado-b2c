@@ -33,14 +33,15 @@ function computeSplitOrderCreation(itemPrice, selectedUserIds) {
     const isActuallySplit = totalParts > 1;
     const splitPrice = isActuallySplit ? (itemPrice / totalParts) : itemPrice;
     
-    // Regra crítica: se está esperando aceite de alguém, status inicial é 'waiting_split' (NÃO vai para a cozinha)
-    const initialStatus = isActuallySplit ? 'waiting_split' : 'pending';
-
+    // Regra crítica: status no banco respeita o check constraint ('pending') e bloqueio de cozinha via metadata
     return {
         totalParts,
         isActuallySplit,
         splitPrice: Number(splitPrice.toFixed(2)),
-        initialStatus
+        status: 'pending',
+        metadata: {
+            waiting_split: isActuallySplit
+        }
     };
 }
 
@@ -57,9 +58,10 @@ function resolveTableHeroLines(establishmentName, tableNumber, onlineUsers, curr
     };
 }
 
-function shouldShowKitchenOrder(orderStatus) {
-    // A cozinha e o garçom filtram apenas pedidos 'pending' e 'preparing'
-    return orderStatus === 'pending' || orderStatus === 'preparing';
+function shouldShowKitchenOrder(order) {
+    // A cozinha e o garçom filtram pedidos 'pending' e 'preparing', bloqueando se waiting_split for true
+    if (order.metadata?.waiting_split) return false;
+    return order.status === 'pending' || order.status === 'preparing';
 }
 
 // Suíte de Testes em Português Brasileiro (PT-BR)
@@ -83,23 +85,25 @@ test('Suíte de Testes: Presença na Mesa, Usuário Convidado, Notificações e 
 
         const orderConfig = computeSplitOrderCreation(itemPrice, splitWithFriend);
         assert.equal(orderConfig.isActuallySplit, true);
-        assert.equal(orderConfig.initialStatus, 'waiting_split', 'Status inicial deve ser waiting_split');
-        assert.equal(shouldShowKitchenOrder(orderConfig.initialStatus), false, 'Pedido waiting_split NÃO pode ser visível na cozinha');
+        assert.equal(orderConfig.status, 'pending', 'Status no banco deve ser pending respeitando o check constraint do Postgres');
+        assert.equal(orderConfig.metadata.waiting_split, true, 'Metadata deve conter waiting_split = true');
+        assert.equal(shouldShowKitchenOrder(orderConfig), false, 'Pedido com waiting_split NÃO pode ser visível na cozinha');
 
         // Cenário: Pedido individual (sem divisão)
         const soloOrder = computeSplitOrderCreation(itemPrice, ['usr-victor']);
         assert.equal(soloOrder.isActuallySplit, false);
-        assert.equal(soloOrder.initialStatus, 'pending', 'Pedido individual vai direto com status pending');
-        assert.equal(shouldShowKitchenOrder(soloOrder.initialStatus), true, 'Pedido individual deve ser visível na cozinha');
+        assert.equal(soloOrder.status, 'pending', 'Pedido individual vai direto com status pending');
+        assert.equal(soloOrder.metadata.waiting_split, false, 'Pedido individual não aguarda divisão');
+        assert.equal(shouldShowKitchenOrder(soloOrder), true, 'Pedido individual deve ser visível na cozinha');
     });
 
     await t.test('3. Liberação para Cozinha após Aceite da Divisão', () => {
-        let orderStatus = 'waiting_split';
-        assert.equal(shouldShowKitchenOrder(orderStatus), false, 'Antes do aceite: bloqueado na cozinha');
+        const order = { status: 'pending', metadata: { waiting_split: true } };
+        assert.equal(shouldShowKitchenOrder(order), false, 'Antes do aceite: bloqueado na cozinha');
 
         // Amigo aceita a divisão:
-        orderStatus = 'pending';
-        assert.equal(shouldShowKitchenOrder(orderStatus), true, 'Após o aceite: liberado para a cozinha como pending');
+        order.metadata.waiting_split = false;
+        assert.equal(shouldShowKitchenOrder(order), true, 'Após o aceite: liberado para a cozinha como pending');
     });
 
     await t.test('4. Estrutura de 3 Linhas no Hero da Mesa (Bolinhas sem borda de fundo)', () => {

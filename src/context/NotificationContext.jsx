@@ -180,14 +180,23 @@ export const NotificationProvider = ({ children }) => {
                     }
 
                     if (successCount > 0) {
-                        // Ativa o pedido do solicitante (de waiting_split para pending) para agora sim ir para a cozinha
+                        // Ativa o pedido do solicitante (removendo waiting_split) para agora sim ir para a cozinha
                         if (req.itemDetails?.batchId) {
                             try {
-                                await supabase
+                                const { data: batchOrders } = await supabase
                                     .from('orders')
-                                    .update({ status: 'pending' })
-                                    .eq('order_batch_id', req.itemDetails.batchId)
-                                    .eq('status', 'waiting_split');
+                                    .select('id, metadata')
+                                    .eq('order_batch_id', req.itemDetails.batchId);
+
+                                if (batchOrders && batchOrders.length > 0) {
+                                    for (const bo of batchOrders) {
+                                        const updatedMeta = { ...(bo.metadata || {}), waiting_split: false, split_pending: null };
+                                        await supabase
+                                            .from('orders')
+                                            .update({ metadata: updatedMeta, status: 'pending' })
+                                            .eq('id', bo.id);
+                                    }
+                                }
                             } catch (statusErr) {
                                 console.warn('Erro ao ativar status do lote para cozinha:', statusErr);
                             }
