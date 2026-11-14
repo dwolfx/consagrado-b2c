@@ -1,4 +1,4 @@
-# Logs
+﻿# Logs
 logs
 *.log
 npm-debug.log*
@@ -25,3 +25,15 @@ dist-ssr
 
 .env
 .env.local
+
+
+# Protecoes de Seguranca Locais
+.env*
+.env.*.local
+*.env
+node_modules/
+dist/
+.venv/
+
+
+# Protecoes Locais de Seguranca
